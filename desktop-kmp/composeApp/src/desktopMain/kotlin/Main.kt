@@ -139,9 +139,9 @@ fun DeskToyFullScreenOverlay() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .pointerInput(activeTool, punchPowerLevel = punchLevel) {
-                detectTapGestures { offset ->
-                    mousePos = offset
+            .pointerInput(activeTool, punchLevel) {
+                detectTapGestures { tapPos ->
+                    mousePos = tapPos
                     when (activeTool) {
                         DesktopTool.BOXING_GLOVE -> {
                             isPunchingAnim = true
@@ -170,8 +170,8 @@ fun DeskToyFullScreenOverlay() {
                             cracks.add(
                                 ScreenCrack(
                                     id = System.currentTimeMillis().toString(),
-                                    x = offset.x,
-                                    y = offset.y,
+                                    x = tapPos.x,
+                                    y = tapPos.y,
                                     severity = punchLevel,
                                     rays = rays,
                                     rings = rings
@@ -189,8 +189,8 @@ fun DeskToyFullScreenOverlay() {
                             }
                             splatters.add(
                                 PaintSplatter(
-                                    x = offset.x,
-                                    y = offset.y,
+                                    x = tapPos.x,
+                                    y = tapPos.y,
                                     color = colors.random(),
                                     radius = 18f + Random.nextFloat() * 16f,
                                     drips = drips
@@ -198,16 +198,23 @@ fun DeskToyFullScreenOverlay() {
                             )
                         }
                         DesktopTool.SAPU_BROOM -> {
-                            cracks.removeAll { (it.x - offset.x) * (it.x - offset.x) + (it.y - offset.y) * (it.y - offset.y) < 18000 }
-                            splatters.removeAll { (it.x - offset.x) * (it.x - offset.x) + (it.y - offset.y) * (it.y - offset.y) < 18000 }
+                            cracks.removeAll {
+                                val dx = it.x - tapPos.x
+                                val dy = it.y - tapPos.y
+                                (dx * dx + dy * dy) < 18000f
+                            }
+                            splatters.removeAll {
+                                val dx = it.x - tapPos.x
+                                val dy = it.y - tapPos.y
+                                (dx * dx + dy * dy) < 18000f
+                            }
                         }
                         DesktopTool.LASER -> {
-                            laserPos = offset
+                            laserPos = tapPos
                             // Cat follows laser
-                            catPos = Offset(
-                                (catPos.x + (offset.x - catPos.x) * 0.3f).coerceIn(40f, 1600f),
-                                (catPos.y + (offset.y - catPos.y) * 0.3f).coerceIn(40f, 900f)
-                            )
+                            val targetX = (catPos.x + (tapPos.x - catPos.x) * 0.3f).coerceIn(40f, 1600f)
+                            val targetY = (catPos.y + (tapPos.y - catPos.y) * 0.3f).coerceIn(40f, 900f)
+                            catPos = Offset(targetX, targetY)
                         }
                         else -> {}
                     }
@@ -216,16 +223,23 @@ fun DeskToyFullScreenOverlay() {
             .pointerInput(activeTool) {
                 detectDragGestures { change, _ ->
                     mousePos = change.position
+                    val dragPos = change.position
                     if (activeTool == DesktopTool.SAPU_BROOM) {
-                        val pos = change.position
-                        cracks.removeAll { (it.x - pos.x) * (it.x - pos.x) + (it.y - pos.y) * (it.y - pos.y) < 18000 }
-                        splatters.removeAll { (it.x - pos.x) * (it.x - pos.x) + (it.y - pos.y) * (it.y - pos.y) < 18000 }
+                        cracks.removeAll {
+                            val dx = it.x - dragPos.x
+                            val dy = it.y - dragPos.y
+                            (dx * dx + dy * dy) < 18000f
+                        }
+                        splatters.removeAll {
+                            val dx = it.x - dragPos.x
+                            val dy = it.y - dragPos.y
+                            (dx * dx + dy * dy) < 18000f
+                        }
                     } else if (activeTool == DesktopTool.LASER) {
-                        laserPos = change.position
-                        catPos = Offset(
-                            (catPos.x + (change.position.x - catPos.x) * 0.15f).coerceIn(40f, 1600f),
-                            (catPos.y + (change.position.y - catPos.y) * 0.15f).coerceIn(40f, 900f)
-                        )
+                        laserPos = dragPos
+                        val targetX = (catPos.x + (dragPos.x - catPos.x) * 0.15f).coerceIn(40f, 1600f)
+                        val targetY = (catPos.y + (dragPos.y - catPos.y) * 0.15f).coerceIn(40f, 900f)
+                        catPos = Offset(targetX, targetY)
                     }
                 }
             }
@@ -327,7 +341,7 @@ fun DeskToyFullScreenOverlay() {
                     }
                 }
         ) {
-            Column(horizontalAlignment = Alignment.CenterVertically) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0xFF0F172A).copy(alpha = 0.95f),
