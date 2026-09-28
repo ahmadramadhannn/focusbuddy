@@ -7,18 +7,22 @@ A transparent, always-on-top desktop overlay fidget and focus accountability com
 - **Procedural Screen Puncher & Shatter**: Click anywhere to shatter your monitor with ray-tracing glass fractures.
 - **Sapu (Broom) & Mop Wiper**: Clean up cracks, water droplets, and paint splatters.
 - **Paint & Water Gun**: Acrylic splatter with physics drips.
-- **Loafing Desk Cat**: Click to pet, stalk laser pointer, purr animations.
+- **Loafing Desk Cat**: Click to pet with soothing purr rumble, heart feedback, and laser chase.
 - **Focus Coach Object**: Periodically checks in when you get distracted and prompts you to return to work.
 
 ## 🛠️ How to Build and Run
 
 ### Prerequisites
-- JDK 17 or higher
-- Gradle 8+
+- JDK 17 or higher (Oracle JDK, Eclipse Temurin, or Amazon Corretto)
+- Gradle Wrapper included (`gradlew` / `gradlew.bat`)
 
 ### Running in Development
 ```bash
+# macOS / Linux
 ./gradlew :composeApp:run
+
+# Windows (Command Prompt or PowerShell)
+.\gradlew.bat :composeApp:run
 ```
 
 ### Packaging Native Installers

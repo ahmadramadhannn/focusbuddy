@@ -8,6 +8,7 @@ interface InteractiveCatProps {
   onCatPurr?: () => void;
   onPet?: (petCount: number) => void;
   selectedBreed?: CatBreed;
+  externalPetTrigger?: number;
 }
 
 const CAT_QUIPS = [
@@ -35,6 +36,7 @@ export const InteractiveCat: React.FC<InteractiveCatProps> = ({
   onCatPurr,
   onPet,
   selectedBreed = 'orange_tabby',
+  externalPetTrigger,
 }) => {
   const [pos, setPos] = useState({ x: 120, y: window.innerHeight - 200 });
   const [state, setState] = useState<CatState>('loaf');
@@ -92,6 +94,13 @@ export const InteractiveCat: React.FC<InteractiveCatProps> = ({
     const response = POSITIVE_PET_RESPONSES[newPetCount % POSITIVE_PET_RESPONSES.length];
     setThought(response);
   }, [petCount, onCatPurr, onPet]);
+
+  // Handle external pet triggers (e.g. from bottom toolbar)
+  useEffect(() => {
+    if (externalPetTrigger && externalPetTrigger > 0) {
+      pet();
+    }
+  }, [externalPetTrigger]);
 
   // Laser chasing AI behavior
   useEffect(() => {

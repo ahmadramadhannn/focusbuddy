@@ -32,7 +32,8 @@ import {
   Cat,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  Heart
 } from 'lucide-react';
 
 export default function App() {
@@ -59,6 +60,8 @@ export default function App() {
 
   // Floating Objects & Coach
   const [catBreed, setCatBreed] = useState<CatBreed>('orange_tabby');
+  const [catPetTrigger, setCatPetTrigger] = useState(0);
+  const [catPetCount, setCatPetCount] = useState(0);
   const [coachPersonality, setCoachPersonality] = useState<CoachPersonality>('boss');
   const [isFocusPanelOpen, setIsFocusPanelOpen] = useState(false);
   const [isBubbleWrapOpen, setIsBubbleWrapOpen] = useState(false);
@@ -533,6 +536,8 @@ export default function App() {
       <InteractiveCat
         laserPos={currentTool === 'laser' ? laserPos : null}
         selectedBreed={catBreed}
+        externalPetTrigger={catPetTrigger}
+        onPet={(count) => setCatPetCount(count)}
       />
 
       {/* 6. Floating Roaming Focus Coach Object (Come Back to Work Drone) */}
@@ -711,6 +716,21 @@ export default function App() {
                 >
                   <span>🫧</span>
                   <span>Bubble Wrap</span>
+                </button>
+
+                {/* 7. Pet Cat Quick Action */}
+                <button
+                  onClick={() => setCatPetTrigger((prev) => prev + 1)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-950/60 border border-rose-500/30 flex items-center gap-1.5 transition-all active:scale-95"
+                  title="Pet the desk cat for purring animation and positive focus boost"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500 animate-pulse" />
+                  <span>Pet Cat</span>
+                  {catPetCount > 0 && (
+                    <span className="px-1.5 py-0.5 bg-rose-500/30 text-rose-200 rounded-full text-[10px] font-mono">
+                      {catPetCount}
+                    </span>
+                  )}
                 </button>
               </div>
 
