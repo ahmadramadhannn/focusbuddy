@@ -418,6 +418,38 @@ class SoundEngine {
     osc.stop(t + 1.3);
   }
 
+  /** Cat Pet Positive Feedback: Harmonious reward chime + deep soothing purr */
+  public playCatPetPositiveFeedback() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.muted) return;
+
+    // 1. Trigger soothing purr vibration
+    this.playCatPurr();
+
+    // 2. Uplifting positive feedback sparkles / reward chime (Major triad: C5, E5, G5, C6)
+    const t = this.ctx.currentTime;
+    const chimeNotes = [523.25, 659.25, 783.99, 1046.50];
+    chimeNotes.forEach((freq, idx) => {
+      if (!this.ctx || !this.masterGain) return;
+      const noteDelay = idx * 0.055;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + noteDelay);
+
+      gain.gain.setValueAtTime(0, t + noteDelay);
+      gain.gain.linearRampToValueAtTime(0.12, t + noteDelay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + noteDelay + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(t + noteDelay);
+      osc.stop(t + noteDelay + 0.5);
+    });
+  }
+
   /** Focus Gong / Bell: Resonant warm singing bowl */
   public playFocusGong() {
     this.init();

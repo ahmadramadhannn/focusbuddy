@@ -31,9 +31,29 @@
   50% { transform: scale(1.02) translateY(-2px); }
 }
 
+@keyframes purr-pulse {
+  0% { transform: scale(1) translateY(0); }
+  20% { transform: scale(1.08, 0.94) translateY(2px); }
+  40% { transform: scale(0.96, 1.06) translateY(-4px); }
+  60% { transform: scale(1.05, 0.96) translateY(1px); }
+  80% { transform: scale(0.98, 1.02) translateY(-1px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes purr-ring {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 @keyframes float-gentle {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+@keyframes heart-rise {
+  0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-10px) scale(1.2) rotate(-8deg); }
+  100% { transform: translateY(-50px) scale(1.4) rotate(15deg); opacity: 0; }
 }
 
 @keyframes bubble-pop {
@@ -53,6 +73,18 @@
 
 .animate-purr {
   animation: purr-vibrate 0.6s ease-in-out infinite;
+}
+
+.animate-purr-pulse {
+  animation: purr-pulse 0.75s ease-in-out infinite;
+}
+
+.animate-purr-ring {
+  animation: purr-ring 1.1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.animate-heart-rise {
+  animation: heart-rise 1.4s ease-out forwards;
 }
 
 .animate-float {

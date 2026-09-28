@@ -67,7 +67,7 @@ goto fail
 set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 
 @rem Execute Gradle
-"%JAVA_EXE%" -jar "%CLASSPATH%" %*
+"%JAVA_EXE%" "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of

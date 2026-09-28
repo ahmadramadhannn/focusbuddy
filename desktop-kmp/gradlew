@@ -109,8 +109,5 @@ if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
     esac
 fi
 
-# Collect all arguments for the java command, following the shell quoting and substitution rules
-eval set -- "$@"
-
-# If the jar is not present, auto-download or run via java
-exec "$JAVACMD" -jar "$CLASSPATH" "$@"
+# Execute Gradle Wrapper Main class
+exec "$JAVACMD" "-Dorg.gradle.appname=$APP_BASE_NAME" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

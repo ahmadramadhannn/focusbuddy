@@ -316,26 +316,26 @@ fun DeskToyFullScreenOverlay() {
             }
         }
 
-        // 2. Floating Cat Sitting / Roaming anywhere on screen
+        // 2. Floating Cat Sitting / Roaming anywhere on screen with Pet function
         Box(
             modifier = Modifier
                 .offset(x = catPos.x.dp, y = catPos.y.dp)
                 .pointerInput(Unit) {
                     detectTapGestures {
                         catHappiness = (catHappiness + 15).coerceAtMost(100)
-                        catThought = "Purrrrrr! 💖 Now write 10 lines of code!"
+                        catThought = "Purrrrrr! 💖 That feels amazing! +10 Focus Power!"
                     }
                 }
         ) {
             Column(horizontalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF0F172A).copy(alpha = 0.9f),
+                    color = Color(0xFF0F172A).copy(alpha = 0.95f),
                     modifier = Modifier.padding(bottom = 4.dp)
                 ) {
                     Text(
                         text = catThought,
-                        color = Color.White,
+                        color = Color(0xFFFDE68A),
                         fontSize = 11.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -343,12 +343,13 @@ fun DeskToyFullScreenOverlay() {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = Color(0xFFF59E0B),
-                    modifier = Modifier.size(60.dp, 40.dp)
+                    modifier = Modifier.size(64.dp, 44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("🐱", fontSize = 24.sp)
+                        Text("🐱", fontSize = 26.sp)
                     }
                 }
+                Text("Click to pet 🐾", color = Color(0xFFE2E8F0), fontSize = 9.sp)
             }
         }
 
