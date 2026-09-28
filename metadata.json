@@ -1,0 +1,7 @@
+{
+  "name": "DeskToy & Focus Buddy: Screen Fidget Sanctuary",
+  "description": "Interactive stress-relief desktop toy and anti-distraction work companion with screen punching, cleaning physics, paint splatters, interactive desk cat, and humorous focus accountability coaches.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
