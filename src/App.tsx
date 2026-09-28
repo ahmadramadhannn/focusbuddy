@@ -5,7 +5,6 @@ import {
   Droplet, 
   WipeTrail, 
   ScreenSticker, 
-  WallpaperTheme, 
   CatBreed,
   CoachPersonality 
 } from './types';
@@ -13,35 +12,37 @@ import { sound } from './utils/audio';
 import { ScreenCanvas } from './components/ScreenCanvas';
 import { InteractiveCat } from './components/InteractiveCat';
 import { FocusCoach } from './components/FocusCoach';
-import { ToyToolbar } from './components/ToyToolbar';
-import { VirtualDesktop } from './components/VirtualDesktop';
+import { ScreenCursorOverlay } from './components/ScreenCursorOverlay';
 import { BubbleWrapModal } from './components/BubbleWrapModal';
 import { DesktopCompanionModal } from './components/DesktopCompanionModal';
-import { CompactCompanionView } from './components/CompactCompanionView';
 import { 
   X, 
   Sparkles, 
-  Sliders, 
   Volume2, 
   VolumeX, 
   RotateCcw,
-  Zap,
+  Maximize,
+  Minimize,
+  Sliders,
   Laptop,
-  Minimize2,
-  Maximize2
+  Tv,
+  ChevronUp,
+  ChevronDown,
+  Layers,
+  Cat,
+  Zap,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function App() {
-  // View mode: 'compact_companion' (default side-by-side widget) vs 'full_desk' (full screen sandbox)
-  const [viewMode, setViewMode] = useState<'compact_companion' | 'full_desk'>('compact_companion');
-
-  // Tool state
+  // Active Tool state
   const [currentTool, setCurrentTool] = useState<ToolType>('punch');
-  const [paintColor, setPaintColor] = useState<string>('#ef4444');
   const [punchPower, setPunchPower] = useState<number>(2);
+  const [paintColor, setPaintColor] = useState<string>('#ef4444');
   const [activeStickerText, setActiveStickerText] = useState<string>('NO YOUTUBE!');
 
-  // Screen effect state
+  // Screen effects physics state
   const [cracks, setCracks] = useState<GlassCrack[]>([]);
   const [droplets, setDroplets] = useState<Droplet[]>([]);
   const [wipeTrails, setWipeTrails] = useState<WipeTrail[]>([]);
@@ -51,297 +52,89 @@ export default function App() {
   >([]);
   const [isScreenShaking, setIsScreenShaking] = useState(false);
 
-  // Laser Pointer Position
+  // Mouse & Laser tracking
+  const [mousePos, setMousePos] = useState({ x: -100, y: -100 });
+  const [isMouseDown, setIsMouseDown] = useState(false);
   const [laserPos, setLaserPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Cat & Coach Settings
+  // Floating Objects & Coach
   const [catBreed, setCatBreed] = useState<CatBreed>('orange_tabby');
   const [coachPersonality, setCoachPersonality] = useState<CoachPersonality>('boss');
   const [isFocusPanelOpen, setIsFocusPanelOpen] = useState(false);
   const [isBubbleWrapOpen, setIsBubbleWrapOpen] = useState(false);
   const [isDesktopModalOpen, setIsDesktopModalOpen] = useState(false);
+  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
 
-  // Live Screen Sharing State
-  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const [isPipActive, setIsPipActive] = useState(false);
-  const pipWindowRef = useRef<Window | null>(null);
+  // Floating Coach Dialog roaming bubble
+  const [floatingCoachPos, setFloatingCoachPos] = useState({ x: window.innerWidth - 300, y: 50 });
+  const [coachThought, setCoachThought] = useState("Hey! Don't switch tabs! Back to work! 🎯");
+  const [isCoachVisible, setIsCoachVisible] = useState(true);
 
-  // Desktop & Audio Settings
-  const [wallpaper, setWallpaper] = useState<WallpaperTheme>('cozy_desk');
+  // Audio Settings & Fullscreen
   const [isMuted, setIsMuted] = useState(false);
   const [ambientSound, setAmbientSound] = useState<'off' | 'rain' | 'lofi' | 'brown_noise'>('off');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Mouse drag state for continuous wiping / spraying
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
+  // Real Screen Stream
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Generated wallpaper URLs
-  const cozyWallpaperUrl = '/src/assets/images/desktop_cozy_1790555602390.jpg';
-  const natureWallpaperUrl = '/src/assets/images/desktop_nature_1790555612571.jpg';
+  // Background style: Pure Transparent vs Live Screen Stream vs Translucent Tint
+  const [backdropMode, setBackdropMode] = useState<'transparent' | 'stream' | 'glass_dark'>('transparent');
 
-  // Request browser desktop notification permissions for anti-distraction alerts
+  // Track global mouse position for custom boxing glove / broom cursor
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission().catch(() => {});
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+      if (currentTool === 'laser') {
+        setLaserPos({ x: e.clientX, y: e.clientY });
       }
-    }
-  }, []);
-
-  // Screen Share Handler (Capture real desktop or window)
-  const handleStartScreenShare = async () => {
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            cursor: 'always',
-          } as MediaTrackConstraints,
-          audio: false,
-        });
-
-        setScreenStream(stream);
-
-        // Switch to full desk so they can see their live screen underneath
-        setViewMode('full_desk');
-
-        // Listen for user stopping stream via browser UI
-        stream.getVideoTracks()[0].onended = () => {
-          setScreenStream(null);
-        };
-      }
-    } catch (err) {
-      console.warn('Screen share canceled or not supported:', err);
-    }
-  };
-
-  const handleStopScreenShare = () => {
-    if (screenStream) {
-      screenStream.getTracks().forEach((track) => track.stop());
-      setScreenStream(null);
-    }
-  };
-
-  // Document Picture-in-Picture (Always-on-Top OS mini desktop widget)
-  const handleLaunchPip = async () => {
-    try {
-      // @ts-ignore - Document Picture-in-Picture API
-      if ('documentPictureInPicture' in window) {
-        // @ts-ignore
-        const pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 360,
-          height: 520,
-        });
-        pipWindowRef.current = pipWindow;
-        setIsPipActive(true);
-
-        // Copy styles to PiP window
-        [...document.styleSheets].forEach((styleSheet) => {
-          try {
-            const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
-            const style = document.createElement('style');
-            style.textContent = cssRules;
-            pipWindow.document.head.appendChild(style);
-          } catch (e) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.type = styleSheet.type;
-            link.media = styleSheet.media.toString();
-            link.href = styleSheet.href || '';
-            pipWindow.document.head.appendChild(link);
-          }
-        });
-
-        // Render PiP Widget Container
-        const container = pipWindow.document.createElement('div');
-        container.id = 'pip-root';
-        pipWindow.document.body.style.margin = '0';
-        pipWindow.document.body.style.background = '#090d16';
-        pipWindow.document.body.style.fontFamily = 'Inter, sans-serif';
-        pipWindow.document.body.appendChild(container);
-
-        container.innerHTML = `
-          <div style="padding: 14px; color: white; display: flex; flex-direction: column; gap: 10px; height: 100vh; box-sizing: border-box; justify-content: space-between;">
-            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-              <div style="font-weight: 800; font-size: 13px; color: #818cf8; display: flex; align-items: center; gap: 6px;">
-                <span>🎯</span> Desk Companion
-              </div>
-              <div style="font-size: 9px; background: #059669; color: white; padding: 2px 6px; border-radius: 9999px; font-weight: bold;">
-                ALWAYS ON TOP
-              </div>
-            </div>
-
-            <!-- Mascot & Quote -->
-            <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 10px; text-align: center;">
-              <div style="font-size: 36px; margin-bottom: 2px;">🐱</div>
-              <div style="font-size: 12px; font-weight: 700; color: #f1f5f9;">Desk Loaf Cat</div>
-              <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;" id="pip-quote">
-                "Keep working! Stop switching tabs! 🐾"
-              </div>
-            </div>
-
-            <!-- Mini Punch Screen Target inside PiP -->
-            <div id="pip-punch-target" style="height: 100px; background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%); border: 2px solid #475569; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: crosshair; font-size: 11px; color: #94a3b8; font-weight: 600; text-align: center; padding: 6px;">
-              👊 Click this box to Punch Glass!
-            </div>
-
-            <!-- Quick Action Triggers -->
-            <div style="display: flex; gap: 6px;">
-              <button id="pip-punch-btn" style="flex: 1; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
-                👊 Punch
-              </button>
-              <button id="pip-clean-btn" style="flex: 1; background: #10b981; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
-                🧹 Sapu / Clean
-              </button>
-              <button id="pip-bubble-btn" style="flex: 1; background: #6366f1; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
-                🫧 Bubbles
-              </button>
-            </div>
-
-            <div style="font-size: 9px; color: #64748b; text-align: center;">
-              Floats alongside VS Code, Chrome, YouTube & Games
-            </div>
-          </div>
-        `;
-
-        // Bind interactive events in the PiP native OS window
-        const punchBtn = pipWindow.document.getElementById('pip-punch-btn');
-        const cleanBtn = pipWindow.document.getElementById('pip-clean-btn');
-        const bubbleBtn = pipWindow.document.getElementById('pip-bubble-btn');
-        const punchTarget = pipWindow.document.getElementById('pip-punch-target');
-
-        let pipCracks = 0;
-        const triggerPipPunch = () => {
-          pipCracks++;
-          sound.playPunch(0.6);
-          sound.playGlassCrack();
-          if (punchTarget) {
-            punchTarget.style.borderColor = '#ef4444';
-            punchTarget.style.transform = 'scale(0.97)';
-            punchTarget.innerHTML = `💥 Glass Fractured! (${pipCracks} cracks)<br><span style="font-size: 9px; color: #cbd5e1;">Click to shatter more</span>`;
-            setTimeout(() => {
-              if (punchTarget) punchTarget.style.transform = 'scale(1)';
-            }, 100);
-          }
-        };
-
-        if (punchBtn) punchBtn.onclick = triggerPipPunch;
-        if (punchTarget) punchTarget.onclick = triggerPipPunch;
-
-        if (cleanBtn) {
-          cleanBtn.onclick = () => {
-            pipCracks = 0;
-            sound.playMopSwish();
-            if (punchTarget) {
-              punchTarget.style.borderColor = '#475569';
-              punchTarget.innerHTML = `✨ Monitor Cleaned!<br><span style="font-size: 9px; color: #94a3b8;">Click to Punch Glass</span>`;
-            }
-          };
-        }
-        if (bubbleBtn) {
-          bubbleBtn.onclick = () => {
-            setIsBubbleWrapOpen(true);
-          };
-        }
-
-        pipWindow.addEventListener('pagehide', () => {
-          setIsPipActive(false);
-          pipWindowRef.current = null;
-        });
-      } else {
-        // Fallback info modal
-        setIsDesktopModalOpen(true);
-      }
-    } catch (err) {
-      console.warn('PiP error:', err);
-      setIsDesktopModalOpen(true);
-    }
-  };
-
-  // Toggle Fullscreen
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-        setIsFullscreen(false);
-      }
-    }
-  };
-
-  // Sound Mute Toggle
-  const toggleMute = () => {
-    const next = !isMuted;
-    setIsMuted(next);
-    sound.setMuted(next);
-  };
-
-  // Ambient Sound Toggle
-  const handleSelectAmbient = (type: 'off' | 'rain' | 'lofi' | 'brown_noise') => {
-    setAmbientSound(type);
-    sound.setAmbient(type);
-  };
-
-  // Clean Screen
-  const handleCleanAll = () => {
-    sound.playMopSwish();
-    setCracks([]);
-    setDroplets([]);
-    setWipeTrails([]);
-    setStickers([]);
-  };
-
-  // Trigger Screen Shake
-  const triggerScreenShake = () => {
-    setIsScreenShaking(true);
-    setTimeout(() => setIsScreenShaking(false), 360);
-  };
-
-  // Physics animation loop for dripping water/paint and expanding shockwaves
-  useEffect(() => {
-    let animId: number;
-    const updatePhysics = () => {
-      // 1. Update Droplet Drips
-      setDroplets((prev) =>
-        prev.map((drop) => {
-          if (drop.dripLength < drop.maxDripLength) {
-            return {
-              ...drop,
-              dripLength: drop.dripLength + drop.speed,
-            };
-          }
-          return drop;
-        })
-      );
-
-      // 2. Update Shockwave Rings
-      setShockwaves((prev) =>
-        prev
-          .map((sw) => ({
-            ...sw,
-            radius: sw.radius + 6,
-            opacity: sw.opacity - 0.04,
-          }))
-          .filter((sw) => sw.opacity > 0 && sw.radius < sw.maxRadius)
-      );
-
-      // 3. Fade out Wipe Trails
-      setWipeTrails((prev) =>
-        prev
-          .map((t) => ({ ...t, radius: Math.max(0, t.radius - 1.5) }))
-          .filter((t) => t.radius > 5)
-      );
-
-      animId = requestAnimationFrame(updatePhysics);
     };
 
-    animId = requestAnimationFrame(updatePhysics);
-    return () => cancelAnimationFrame(animId);
+    const handleGlobalMouseDown = () => setIsMouseDown(true);
+    const handleGlobalMouseUp = () => setIsMouseDown(false);
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mousedown', handleGlobalMouseDown);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mousedown', handleGlobalMouseDown);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [currentTool]);
+
+  // Hook live screen stream if active
+  useEffect(() => {
+    if (videoRef.current && screenStream) {
+      videoRef.current.srcObject = screenStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [screenStream]);
+
+  // Periodic coach reminder check-ins
+  useEffect(() => {
+    const quotes = [
+      "🚨 Hey! Did that YouTube video solve your task?",
+      "👊 Punch the screen if stressed, then write 5 lines of code!",
+      "🐱 The cat is judging your distraction level. Focus!",
+      "⚡ Dopamine is cheap, shipping working code is priceless!",
+      "⏱️ 25 minutes of deep focus right now. You can do it!",
+      "🛑 Stop checking other tabs! Your future self is watching!",
+    ];
+
+    const interval = setInterval(() => {
+      const nextQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      setCoachThought(nextQuote);
+      setIsCoachVisible(true);
+      sound.playCatMeow(false);
+    }, 45000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Erase effects within a radius (used by Mop and Squeegee)
+  // Erase effects within radius
   const eraseInRadius = useCallback((x: number, y: number, radius: number) => {
     setCracks((prev) => prev.filter((c) => Math.hypot(c.x - x, c.y - y) > radius + c.radius * 0.5));
     setDroplets((prev) => prev.filter((d) => Math.hypot(d.x - x, d.y - y) > radius + d.radius));
@@ -351,9 +144,9 @@ export default function App() {
   // Helper to generate realistic glass crack geometry
   const createCrack = (x: number, y: number, power: number): GlassCrack => {
     const radius = 35 + power * 35 + Math.random() * 25;
-    const branchesCount = 5 + power * 2;
+    const branchesCount = 6 + power * 3;
     const rings = 2 + power;
-    const holeRadius = power === 3 ? 16 : power === 2 ? 8 : 4;
+    const holeRadius = power === 3 ? 18 : power === 2 ? 10 : 5;
 
     const branches = [];
     for (let i = 0; i < branchesCount; i++) {
@@ -366,13 +159,12 @@ export default function App() {
       branches.push({ angle, length, subBranches });
     }
 
-    // Shards
     const shardsCount = 3 + power * 2;
     const shards = [];
     for (let s = 0; s < shardsCount; s++) {
       const shardAngle = Math.random() * Math.PI * 2;
       const shardDist = Math.random() * (radius * 0.4);
-      const shardSize = 8 + Math.random() * 12;
+      const shardSize = 8 + Math.random() * 14;
       shards.push({
         points: [
           { x: 0, y: 0 },
@@ -384,7 +176,7 @@ export default function App() {
           y: Math.sin(shardAngle) * shardDist,
         },
         alpha: 0.85,
-        color: 'rgba(230, 245, 255, 0.45)',
+        color: 'rgba(230, 245, 255, 0.55)',
       });
     }
 
@@ -402,8 +194,14 @@ export default function App() {
     };
   };
 
-  // Handle Tool Click / Interaction
-  const handleInteraction = (x: number, y: number) => {
+  // Trigger Screen Shake
+  const triggerScreenShake = () => {
+    setIsScreenShaking(true);
+    setTimeout(() => setIsScreenShaking(false), 360);
+  };
+
+  // Tool Click Handler
+  const handleScreenClick = (x: number, y: number) => {
     switch (currentTool) {
       case 'punch': {
         if (punchPower === 3) {
@@ -417,25 +215,18 @@ export default function App() {
         const newCrack = createCrack(x, y, punchPower);
         setCracks((prev) => [...prev, newCrack]);
 
-        // Shockwave
         setShockwaves((prev) => [
           ...prev,
-          { x, y, radius: 10, maxRadius: 100 * punchPower, opacity: 0.9 },
+          { x, y, radius: 10, maxRadius: 110 * punchPower, opacity: 0.9 },
         ]);
         break;
       }
 
-      case 'mop': {
-        sound.playMopSwish();
-        const brushRadius = 75;
-        setWipeTrails((prev) => [...prev, { x, y, radius: brushRadius }]);
-        eraseInRadius(x, y, brushRadius);
-        break;
-      }
-
+      case 'mop':
       case 'squeegee': {
-        sound.playSqueegeeSqueak();
-        const brushRadius = 55;
+        if (currentTool === 'mop') sound.playMopSwish();
+        else sound.playSqueegeeSqueak();
+        const brushRadius = currentTool === 'mop' ? 75 : 55;
         setWipeTrails((prev) => [...prev, { x, y, radius: brushRadius }]);
         eraseInRadius(x, y, brushRadius);
         break;
@@ -453,7 +244,7 @@ export default function App() {
             x: x + offsetX,
             y: y + offsetY,
             radius: 5 + Math.random() * 8,
-            color: 'rgba(180, 225, 255, 0.7)',
+            color: 'rgba(180, 225, 255, 0.75)',
             type: 'water',
             dripLength: 0,
             maxDripLength: 40 + Math.random() * 120,
@@ -520,14 +311,7 @@ export default function App() {
     }
   };
 
-  // Canvas Mouse Down
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsMouseDown(true);
-    lastMousePos.current = { x: e.clientX, y: e.clientY };
-    handleInteraction(e.clientX, e.clientY);
-  };
-
-  // Canvas Mouse Move (Drag cleaning or laser moving)
+  // Continuous drag handler for broom / mop / spray
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (currentTool === 'laser') {
       setLaserPos({ x: e.clientX, y: e.clientY });
@@ -543,103 +327,182 @@ export default function App() {
       }
     } else if (isMouseDown && currentTool === 'water') {
       if (Math.random() < 0.25) {
-        handleInteraction(e.clientX, e.clientY);
+        handleScreenClick(e.clientX, e.clientY);
       }
     }
   };
 
-  const handleCanvasMouseUp = () => {
-    setIsMouseDown(false);
+  // Start Screen Share to project real desktop under transparent overlay
+  const handleStartScreenShare = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            cursor: 'always',
+          } as MediaTrackConstraints,
+          audio: false,
+        });
+
+        setScreenStream(stream);
+        setBackdropMode('stream');
+
+        stream.getVideoTracks()[0].onended = () => {
+          setScreenStream(null);
+          setBackdropMode('transparent');
+        };
+      }
+    } catch (err) {
+      console.warn('Screen share canceled:', err);
+    }
   };
 
-  // If in Compact Companion mode (Default side-by-side mode)
-  if (viewMode === 'compact_companion') {
-    return (
-      <div className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col">
-        <CompactCompanionView
-          currentTool={currentTool}
-          onSelectTool={setCurrentTool}
-          punchPower={punchPower}
-          onSelectPunchPower={setPunchPower}
-          paintColor={paintColor}
-          onSelectPaintColor={setPaintColor}
-          onCleanAll={handleCleanAll}
-          isMuted={isMuted}
-          onToggleMute={toggleMute}
-          catBreed={catBreed}
-          onSelectCatBreed={setCatBreed}
-          coachPersonality={coachPersonality}
-          onSelectCoachPersonality={setCoachPersonality}
-          onExpandToFull={() => setViewMode('full_desk')}
-          onLaunchPip={handleLaunchPip}
-          isPipActive={isPipActive}
-          onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
-          onOpenBubbleWrap={() => setIsBubbleWrapOpen(true)}
-        />
+  const handleStopScreenShare = () => {
+    if (screenStream) {
+      screenStream.getTracks().forEach((track) => track.stop());
+      setScreenStream(null);
+      setBackdropMode('transparent');
+    }
+  };
 
-        {/* Bubble Wrap Popper Modal */}
-        <BubbleWrapModal
-          isOpen={isBubbleWrapOpen}
-          onClose={() => setIsBubbleWrapOpen(false)}
-        />
+  // Clean all fractures & droplets
+  const handleCleanAll = () => {
+    sound.playMopSwish();
+    setCracks([]);
+    setDroplets([]);
+    setWipeTrails([]);
+    setStickers([]);
+  };
 
-        {/* Desktop Companion & Kotlin Multiplatform Modal */}
-        <DesktopCompanionModal
-          isOpen={isDesktopModalOpen}
-          onClose={() => setIsDesktopModalOpen(false)}
-          onStartScreenShare={handleStartScreenShare}
-          isScreenSharing={!!screenStream}
-          onStopScreenShare={handleStopScreenShare}
-          onLaunchPip={handleLaunchPip}
-          isPipActive={isPipActive}
-        />
-      </div>
-    );
-  }
+  // Physics animation loop
+  useEffect(() => {
+    let animId: number;
+    const updatePhysics = () => {
+      setDroplets((prev) =>
+        prev.map((drop) => {
+          if (drop.dripLength < drop.maxDripLength) {
+            return {
+              ...drop,
+              dripLength: drop.dripLength + drop.speed,
+            };
+          }
+          return drop;
+        })
+      );
 
-  // Full Screen Sandbox Mode
+      setShockwaves((prev) =>
+        prev
+          .map((sw) => ({
+            ...sw,
+            radius: sw.radius + 6,
+            opacity: sw.opacity - 0.04,
+          }))
+          .filter((sw) => sw.opacity > 0 && sw.radius < sw.maxRadius)
+      );
+
+      setWipeTrails((prev) =>
+        prev
+          .map((t) => ({ ...t, radius: Math.max(0, t.radius - 1.5) }))
+          .filter((t) => t.radius > 5)
+      );
+
+      animId = requestAnimationFrame(updatePhysics);
+    };
+
+    animId = requestAnimationFrame(updatePhysics);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
   return (
     <div
-      className={`relative w-screen h-screen overflow-hidden ${
+      className={`relative w-screen h-screen overflow-hidden select-none transition-colors duration-300 ${
         isScreenShaking ? 'animate-screen-shake' : ''
+      } ${
+        backdropMode === 'transparent'
+          ? 'bg-slate-950/20 backdrop-blur-[0.5px]'
+          : backdropMode === 'glass_dark'
+          ? 'bg-slate-950/70 backdrop-blur-sm'
+          : 'bg-black'
       }`}
       style={{
-        cursor:
-          currentTool === 'punch'
-            ? 'crosshair'
-            : currentTool === 'mop' || currentTool === 'squeegee'
-            ? 'cell'
-            : currentTool === 'laser'
-            ? 'none'
-            : 'default',
+        cursor: 'none', // ScreenCursorOverlay renders custom boxing glove / broom / laser
       }}
     >
-      {/* 1. Virtual Desktop OS Background & Live Real Screen Mirror */}
-      <VirtualDesktop
-        wallpaper={wallpaper}
-        onChangeWallpaper={setWallpaper}
-        cozyWallpaperUrl={cozyWallpaperUrl}
-        natureWallpaperUrl={natureWallpaperUrl}
-        onOpenFocusHub={() => setIsFocusPanelOpen(true)}
-        onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
-        screenStream={screenStream}
-        isScreenSharing={!!screenStream}
-        onStartScreenShare={handleStartScreenShare}
-        onStopScreenShare={handleStopScreenShare}
-      />
+      {/* 1. Live Real Screen Feed (If user captures real desktop/window) */}
+      {screenStream && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none filter brightness-95 contrast-105"
+        />
+      )}
 
-      {/* Mode Switcher Button (Top Right Floating) */}
-      <div className="absolute top-12 left-4 z-40">
-        <button
-          onClick={() => setViewMode('compact_companion')}
-          className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700 text-xs font-semibold shadow-xl flex items-center gap-1.5 transition-all"
-        >
-          <Minimize2 className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Switch to Side Companion Widget</span>
-        </button>
-      </div>
+      {/* 2. Top Ultra-Slim Translucent Overlay Header */}
+      <header className="absolute top-2 left-4 right-4 z-40 flex items-center justify-between pointer-events-auto">
+        <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-full shadow-lg text-xs text-slate-200">
+          <span className="font-bold text-white flex items-center gap-1.5">
+            <span className="text-rose-400">🥊</span> DeskToy Transparent Screen Overlay
+          </span>
+          <span className="text-slate-500">|</span>
+          <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            Transparent Work Mode
+          </span>
+        </div>
 
-      {/* 2. Interactive Screen Physics Canvas (Cracks, Paint, Water, Laser) */}
+        <div className="flex items-center gap-2">
+          {/* Real Screen Mirror Toggle */}
+          {screenStream ? (
+            <button
+              onClick={handleStopScreenShare}
+              className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg transition-colors flex items-center gap-1.5 animate-pulse"
+            >
+              <Tv className="w-3.5 h-3.5" />
+              <span>Stop Screen Mirror</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleStartScreenShare}
+              className="px-3 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-medium backdrop-blur-md shadow-lg transition-all flex items-center gap-1.5"
+              title="Stream your active desktop/IDE/browser directly behind the punch effects"
+            >
+              <Tv className="w-3.5 h-3.5 text-indigo-400" />
+              <span>📺 Mirror Real Desktop</span>
+            </button>
+          )}
+
+          {/* Desktop KMP Guide */}
+          <button
+            onClick={() => setIsDesktopModalOpen(true)}
+            className="px-3 py-1.5 rounded-full bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-semibold backdrop-blur-md shadow-lg transition-all flex items-center gap-1.5"
+          >
+            <Laptop className="w-3.5 h-3.5" />
+            <span>💻 Kotlin Multiplatform</span>
+          </button>
+
+          {/* Focus Coach Hub */}
+          <button
+            onClick={() => setIsFocusPanelOpen(true)}
+            className="px-3 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold backdrop-blur-md shadow-lg transition-all flex items-center gap-1.5"
+          >
+            <span>🎯</span>
+            <span>Focus Hub</span>
+          </button>
+
+          {/* Clean All */}
+          <button
+            onClick={handleCleanAll}
+            className="px-3 py-1.5 rounded-full bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-bold backdrop-blur-md shadow-lg transition-all flex items-center gap-1"
+            title="Clean all fractures and paint immediately"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Clean All</span>
+          </button>
+        </div>
+      </header>
+
+      {/* 3. Screen Physics Canvas (Cracks, Paint, Water, Wipe Trails) */}
       <ScreenCanvas
         cracks={cracks}
         droplets={droplets}
@@ -647,68 +510,249 @@ export default function App() {
         stickers={stickers}
         laserPos={currentTool === 'laser' ? laserPos : null}
         shockwaves={shockwaves}
-        onCanvasMouseDown={handleCanvasMouseDown}
+        onCanvasMouseDown={(e) => handleScreenClick(e.clientX, e.clientY)}
         onCanvasMouseMove={handleCanvasMouseMove}
-        onCanvasMouseUp={handleCanvasMouseUp}
+        onCanvasMouseUp={() => setIsMouseDown(false)}
       />
 
-      {/* 3. Screen Stickers Layer */}
+      {/* 4. Screen Stickers */}
       {stickers.map((st) => (
         <div
           key={st.id}
           style={{
             transform: `translate3d(${st.x}px, ${st.y}px, 0) rotate(${st.rotation}deg)`,
           }}
-          className="absolute z-35 px-3 py-1.5 rounded-lg bg-amber-400 text-amber-950 font-display font-extrabold text-xs shadow-2xl border-2 border-amber-300 pointer-events-none select-none flex items-center gap-1.5 animate-in zoom-in-75"
+          className="absolute z-35 px-3.5 py-1.5 rounded-xl bg-amber-400 text-amber-950 font-display font-black text-xs shadow-2xl border-2 border-amber-300 pointer-events-none select-none flex items-center gap-1.5 animate-in zoom-in-75"
         >
           <span className="text-sm">{st.emoji}</span>
           <span>{st.text}</span>
         </div>
       ))}
 
-      {/* 4. Interactive Desktop Cat Companion */}
+      {/* 5. Free-Roaming Interactive Desk Cat Mascot */}
       <InteractiveCat
         laserPos={currentTool === 'laser' ? laserPos : null}
         selectedBreed={catBreed}
       />
 
-      {/* 5. Bottom Toy Dock */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
-        <ToyToolbar
-          currentTool={currentTool}
-          onSelectTool={(t) => {
-            setCurrentTool(t);
-            if (t === 'bubble_wrap') setIsBubbleWrapOpen(true);
+      {/* 6. Floating Roaming Focus Coach Object (Come Back to Work Drone) */}
+      {isCoachVisible && (
+        <div
+          style={{
+            transform: `translate3d(${floatingCoachPos.x}px, ${floatingCoachPos.y}px, 0)`,
           }}
-          paintColor={paintColor}
-          onSelectPaintColor={setPaintColor}
-          punchPower={punchPower}
-          onSelectPunchPower={setPunchPower}
-          onCleanAll={handleCleanAll}
-          isMuted={isMuted}
-          onToggleMute={toggleMute}
-          ambientSound={ambientSound}
-          onSelectAmbient={handleSelectAmbient}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          activeStickerText={activeStickerText}
-          onSelectStickerText={setActiveStickerText}
-        />
+          className="absolute z-40 pointer-events-auto transition-transform duration-500 ease-out select-none"
+        >
+          <div className="relative group flex items-start gap-2.5">
+            {/* Coach Drone Avatar */}
+            <div
+              onClick={() => {
+                sound.playLaserSound();
+                setCoachThought("🚀 Focus Mode Activated! 0 distractions permitted!");
+              }}
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xl shadow-2xl border-2 border-white/40 cursor-pointer hover:scale-110 active:scale-95 transition-transform animate-bounce"
+            >
+              {coachPersonality === 'alarm' ? '⏰' : coachPersonality === 'duck' ? '🦆' : coachPersonality === 'sensei' ? '🍵' : '👔'}
+            </div>
+
+            {/* Speech Bubble Object Telling User to Come Back to Work */}
+            <div className="bg-slate-900/90 backdrop-blur-md border border-indigo-400/40 rounded-2xl p-3 shadow-2xl max-w-xs text-xs text-slate-100 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1">
+                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                  <span>🚨</span> Focus Alarm
+                </span>
+                <button
+                  onClick={() => setIsCoachVisible(false)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <p className="font-medium leading-snug">{coachThought}</p>
+              <div className="flex items-center justify-end gap-1.5 mt-1">
+                <button
+                  onClick={() => {
+                    handleScreenClick(window.innerWidth / 2, window.innerHeight / 2);
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] transition-colors"
+                >
+                  👊 Punch 1x
+                </button>
+                <button
+                  onClick={() => {
+                    sound.playFocusGong();
+                    setIsCoachVisible(false);
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] transition-colors"
+                >
+                  I'm Working!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Bottom Floating Transparent Toy Toolbar */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto transition-all duration-300">
+        <div className="bg-slate-900/90 backdrop-blur-md border border-white/15 rounded-2xl shadow-2xl p-2 flex items-center gap-2">
+          {/* Collapse/Expand Toggle */}
+          <button
+            onClick={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
+            className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+            title={isToolbarCollapsed ? 'Expand toolbar' : 'Minimize toolbar'}
+          >
+            {isToolbarCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {!isToolbarCollapsed && (
+            <>
+              {/* Tool Selector Buttons */}
+              <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+                {/* 1. Boxing Glove (Punch) */}
+                <button
+                  onClick={() => {
+                    setCurrentTool('punch');
+                    sound.playPunch(0.8);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    currentTool === 'punch'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🥊</span>
+                  <span>Boxing Glove</span>
+                </button>
+
+                {/* Punch Force Level Switcher */}
+                {currentTool === 'punch' && (
+                  <button
+                    onClick={() => {
+                      const next = punchPower >= 3 ? 1 : punchPower + 1;
+                      setPunchPower(next);
+                      sound.playGlassCrack();
+                    }}
+                    className="px-2 py-1 rounded-lg bg-rose-950 text-rose-300 border border-rose-800/60 text-[10px] font-bold"
+                    title="Switch punching power (1x, 2x, 💥MAX)"
+                  >
+                    {punchPower === 1 ? '1x Tap' : punchPower === 2 ? '2x Punch' : '💥 SLEDGE'}
+                  </button>
+                )}
+
+                {/* 2. Sapu / Mop Broom */}
+                <button
+                  onClick={() => {
+                    setCurrentTool('mop');
+                    sound.playMopSwish();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    currentTool === 'mop'
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-105'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🧹</span>
+                  <span>Sapu / Broom</span>
+                </button>
+
+                {/* 3. Water Gun */}
+                <button
+                  onClick={() => {
+                    setCurrentTool('water');
+                    sound.playWaterDrip();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    currentTool === 'water'
+                      ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30 scale-105'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🔫</span>
+                  <span>Water Gun</span>
+                </button>
+
+                {/* 4. Paint Cannon */}
+                <button
+                  onClick={() => {
+                    setCurrentTool('paint');
+                    sound.playPaintSplat();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    currentTool === 'paint'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 scale-105'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🎨</span>
+                  <span>Paint</span>
+                </button>
+
+                {/* 5. Laser Pointer (Chase with cat) */}
+                <button
+                  onClick={() => {
+                    setCurrentTool('laser');
+                    sound.playLaserSound();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    currentTool === 'laser'
+                      ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30 scale-105'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🔴</span>
+                  <span>Laser Pointer</span>
+                </button>
+
+                {/* 6. Bubble Wrap */}
+                <button
+                  onClick={() => setIsBubbleWrapOpen(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <span>🫧</span>
+                  <span>Bubble Wrap</span>
+                </button>
+              </div>
+
+              {/* Sound & Mute Toggle */}
+              <button
+                onClick={() => {
+                  const next = !isMuted;
+                  setIsMuted(next);
+                  sound.setMuted(next);
+                }}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title={isMuted ? 'Unmute audio' : 'Mute audio'}
+              >
+                {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* 6. Focus Coach Drawer / Side Panel */}
+      {/* 8. Custom Boxing Glove / Sapu Cursor Overlay */}
+      <ScreenCursorOverlay
+        currentTool={currentTool}
+        mousePos={mousePos}
+        isMouseDown={isMouseDown}
+        punchPower={punchPower}
+        paintColor={paintColor}
+      />
+
+      {/* 9. Focus Coach Settings Drawer */}
       {isFocusPanelOpen && (
-        <div className="fixed top-12 right-4 bottom-24 w-80 md:w-96 z-50 flex flex-col custom-glass-panel border border-slate-700/80 rounded-2xl shadow-2xl overflow-y-auto p-4 animate-in slide-in-from-right-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+        <div className="fixed top-14 right-4 bottom-24 w-80 md:w-96 z-50 flex flex-col bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-3xl shadow-2xl overflow-y-auto p-5 animate-in slide-in-from-right-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
             <div className="flex items-center gap-2">
-              <span className="text-lg">🎯</span>
-              <h2 className="text-xs font-bold text-white uppercase tracking-wider">
-                Focus Control Center
+              <span className="text-xl">🎯</span>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                Focus Accountability
               </h2>
             </div>
             <button
               onClick={() => setIsFocusPanelOpen(false)}
-              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
+              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -720,38 +764,10 @@ export default function App() {
             onSelectPersonality={setCoachPersonality}
           />
 
-          {/* Desktop Mode Shortcuts */}
-          <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
-            <h4 className="text-xs font-semibold text-slate-300">Live Overlay Options</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                onClick={handleLaunchPip}
-                className="p-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-medium transition-colors text-left flex flex-col gap-1"
-              >
-                <span className="font-bold flex items-center gap-1">
-                  <span>📌</span> Always-on-Top PiP
-                </span>
-                <span className="text-[10px] text-amber-400/80">Float over all OS apps</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsDesktopModalOpen(true);
-                  setIsFocusPanelOpen(false);
-                }}
-                className="p-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 font-medium transition-colors text-left flex flex-col gap-1"
-              >
-                <span className="font-bold flex items-center gap-1">
-                  <span>💻</span> Kotlin Desktop
-                </span>
-                <span className="text-[10px] text-purple-400/80">Source in /desktop-kmp</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Cat Customizer in Focus Panel */}
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <h4 className="text-xs font-semibold text-slate-300 mb-2">Desk Cat Fur Coat</h4>
-            <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+          {/* Desk Cat Customizer */}
+          <div className="mt-5 pt-4 border-t border-slate-800">
+            <h4 className="text-xs font-bold text-slate-300 mb-2.5">Desk Cat Fur Coat</h4>
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
               {(
                 [
                   ['orange_tabby', '🐱 Ginger'],
@@ -767,10 +783,10 @@ export default function App() {
                     setCatBreed(id);
                     sound.playCatMeow(true);
                   }}
-                  className={`p-1.5 rounded-lg border text-center font-medium transition-all ${
+                  className={`p-2 rounded-xl border text-center font-semibold transition-all ${
                     catBreed === id
-                      ? 'bg-indigo-600 border-indigo-400 text-white shadow'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {label}
@@ -781,21 +797,21 @@ export default function App() {
         </div>
       )}
 
-      {/* 7. Bubble Wrap Popper Modal */}
+      {/* 10. Bubble Wrap Modal */}
       <BubbleWrapModal
         isOpen={isBubbleWrapOpen}
         onClose={() => setIsBubbleWrapOpen(false)}
       />
 
-      {/* 8. Desktop Companion & Kotlin Multiplatform Modal */}
+      {/* 11. Desktop Companion Modal (Stream / PiP / Kotlin Multiplatform) */}
       <DesktopCompanionModal
         isOpen={isDesktopModalOpen}
         onClose={() => setIsDesktopModalOpen(false)}
         onStartScreenShare={handleStartScreenShare}
         isScreenSharing={!!screenStream}
         onStopScreenShare={handleStopScreenShare}
-        onLaunchPip={handleLaunchPip}
-        isPipActive={isPipActive}
+        onLaunchPip={() => {}}
+        isPipActive={false}
       />
     </div>
   );

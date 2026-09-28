@@ -599,6 +599,23 @@ class SoundEngine {
     }
   }
 
+  public playLaserSound() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.15);
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  }
+
   public getAmbient(): 'off' | 'rain' | 'lofi' | 'brown_noise' {
     return this.currentAmbient;
   }
