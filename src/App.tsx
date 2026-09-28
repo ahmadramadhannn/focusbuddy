@@ -17,6 +17,7 @@ import { ToyToolbar } from './components/ToyToolbar';
 import { VirtualDesktop } from './components/VirtualDesktop';
 import { BubbleWrapModal } from './components/BubbleWrapModal';
 import { DesktopCompanionModal } from './components/DesktopCompanionModal';
+import { CompactCompanionView } from './components/CompactCompanionView';
 import { 
   X, 
   Sparkles, 
@@ -25,10 +26,15 @@ import {
   VolumeX, 
   RotateCcw,
   Zap,
-  Laptop
+  Laptop,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 
 export default function App() {
+  // View mode: 'compact_companion' (default side-by-side widget) vs 'full_desk' (full screen sandbox)
+  const [viewMode, setViewMode] = useState<'compact_companion' | 'full_desk'>('compact_companion');
+
   // Tool state
   const [currentTool, setCurrentTool] = useState<ToolType>('punch');
   const [paintColor, setPaintColor] = useState<string>('#ef4444');
@@ -96,6 +102,9 @@ export default function App() {
 
         setScreenStream(stream);
 
+        // Switch to full desk so they can see their live screen underneath
+        setViewMode('full_desk');
+
         // Listen for user stopping stream via browser UI
         stream.getVideoTracks()[0].onended = () => {
           setScreenStream(null);
@@ -120,8 +129,8 @@ export default function App() {
       if ('documentPictureInPicture' in window) {
         // @ts-ignore
         const pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 340,
-          height: 480,
+          width: 360,
+          height: 520,
         });
         pipWindowRef.current = pipWindow;
         setIsPipActive(true);
@@ -152,40 +161,45 @@ export default function App() {
         pipWindow.document.body.appendChild(container);
 
         container.innerHTML = `
-          <div style="padding: 16px; color: white; display: flex; flex-direction: column; gap: 12px; height: 100vh; box-sizing: border-box; justify-content: space-between;">
-            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+          <div style="padding: 14px; color: white; display: flex; flex-direction: column; gap: 10px; height: 100vh; box-sizing: border-box; justify-content: space-between;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
               <div style="font-weight: 800; font-size: 13px; color: #818cf8; display: flex; align-items: center; gap: 6px;">
-                <span>🎯</span> DeskToy Companion
+                <span>🎯</span> Desk Companion
               </div>
-              <div style="font-size: 10px; background: #059669; color: white; padding: 2px 6px; border-radius: 9999px; font-weight: bold;">
+              <div style="font-size: 9px; background: #059669; color: white; padding: 2px 6px; border-radius: 9999px; font-weight: bold;">
                 ALWAYS ON TOP
               </div>
             </div>
 
             <!-- Mascot & Quote -->
-            <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 12px; text-align: center;">
-              <div style="font-size: 40px; margin-bottom: 4px;">🐱</div>
+            <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 10px; text-align: center;">
+              <div style="font-size: 36px; margin-bottom: 2px;">🐱</div>
               <div style="font-size: 12px; font-weight: 700; color: #f1f5f9;">Desk Loaf Cat</div>
-              <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;" id="pip-quote">
-                "Keep working! Stop switching tabs!"
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;" id="pip-quote">
+                "Keep working! Stop switching tabs! 🐾"
               </div>
             </div>
 
+            <!-- Mini Punch Screen Target inside PiP -->
+            <div id="pip-punch-target" style="height: 100px; background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%); border: 2px solid #475569; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: crosshair; font-size: 11px; color: #94a3b8; font-weight: 600; text-align: center; padding: 6px;">
+              👊 Click this box to Punch Glass!
+            </div>
+
             <!-- Quick Action Triggers -->
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <button id="pip-punch-btn" style="background: #ef4444; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s;">
-                👊 Punch Screen Shatter
+            <div style="display: flex; gap: 6px;">
+              <button id="pip-punch-btn" style="flex: 1; background: #ef4444; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
+                👊 Punch
               </button>
-              <button id="pip-clean-btn" style="background: #10b981; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer;">
-                🧹 Quick Mop & Clean
+              <button id="pip-clean-btn" style="flex: 1; background: #10b981; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
+                🧹 Sapu / Clean
               </button>
-              <button id="pip-bubble-btn" style="background: #6366f1; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer;">
-                🫧 Open Bubble Wrap Pop
+              <button id="pip-bubble-btn" style="flex: 1; background: #6366f1; color: white; border: none; padding: 8px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">
+                🫧 Bubbles
               </button>
             </div>
 
-            <div style="font-size: 10px; color: #64748b; text-align: center;">
-              Floats above VS Code, Chrome & Games
+            <div style="font-size: 9px; color: #64748b; text-align: center;">
+              Floats alongside VS Code, Chrome, YouTube & Games
             </div>
           </div>
         `;
@@ -194,15 +208,34 @@ export default function App() {
         const punchBtn = pipWindow.document.getElementById('pip-punch-btn');
         const cleanBtn = pipWindow.document.getElementById('pip-clean-btn');
         const bubbleBtn = pipWindow.document.getElementById('pip-bubble-btn');
+        const punchTarget = pipWindow.document.getElementById('pip-punch-target');
 
-        if (punchBtn) {
-          punchBtn.onclick = () => {
-            handleInteraction(window.innerWidth / 2, window.innerHeight / 2);
-          };
-        }
+        let pipCracks = 0;
+        const triggerPipPunch = () => {
+          pipCracks++;
+          sound.playPunch(0.6);
+          sound.playGlassCrack();
+          if (punchTarget) {
+            punchTarget.style.borderColor = '#ef4444';
+            punchTarget.style.transform = 'scale(0.97)';
+            punchTarget.innerHTML = `💥 Glass Fractured! (${pipCracks} cracks)<br><span style="font-size: 9px; color: #cbd5e1;">Click to shatter more</span>`;
+            setTimeout(() => {
+              if (punchTarget) punchTarget.style.transform = 'scale(1)';
+            }, 100);
+          }
+        };
+
+        if (punchBtn) punchBtn.onclick = triggerPipPunch;
+        if (punchTarget) punchTarget.onclick = triggerPipPunch;
+
         if (cleanBtn) {
           cleanBtn.onclick = () => {
-            handleCleanAll();
+            pipCracks = 0;
+            sound.playMopSwish();
+            if (punchTarget) {
+              punchTarget.style.borderColor = '#475569';
+              punchTarget.innerHTML = `✨ Monitor Cleaned!<br><span style="font-size: 9px; color: #94a3b8;">Click to Punch Glass</span>`;
+            }
           };
         }
         if (bubbleBtn) {
@@ -519,6 +552,52 @@ export default function App() {
     setIsMouseDown(false);
   };
 
+  // If in Compact Companion mode (Default side-by-side mode)
+  if (viewMode === 'compact_companion') {
+    return (
+      <div className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col">
+        <CompactCompanionView
+          currentTool={currentTool}
+          onSelectTool={setCurrentTool}
+          punchPower={punchPower}
+          onSelectPunchPower={setPunchPower}
+          paintColor={paintColor}
+          onSelectPaintColor={setPaintColor}
+          onCleanAll={handleCleanAll}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          catBreed={catBreed}
+          onSelectCatBreed={setCatBreed}
+          coachPersonality={coachPersonality}
+          onSelectCoachPersonality={setCoachPersonality}
+          onExpandToFull={() => setViewMode('full_desk')}
+          onLaunchPip={handleLaunchPip}
+          isPipActive={isPipActive}
+          onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
+          onOpenBubbleWrap={() => setIsBubbleWrapOpen(true)}
+        />
+
+        {/* Bubble Wrap Popper Modal */}
+        <BubbleWrapModal
+          isOpen={isBubbleWrapOpen}
+          onClose={() => setIsBubbleWrapOpen(false)}
+        />
+
+        {/* Desktop Companion & Kotlin Multiplatform Modal */}
+        <DesktopCompanionModal
+          isOpen={isDesktopModalOpen}
+          onClose={() => setIsDesktopModalOpen(false)}
+          onStartScreenShare={handleStartScreenShare}
+          isScreenSharing={!!screenStream}
+          onStopScreenShare={handleStopScreenShare}
+          onLaunchPip={handleLaunchPip}
+          isPipActive={isPipActive}
+        />
+      </div>
+    );
+  }
+
+  // Full Screen Sandbox Mode
   return (
     <div
       className={`relative w-screen h-screen overflow-hidden ${
@@ -548,6 +627,17 @@ export default function App() {
         onStartScreenShare={handleStartScreenShare}
         onStopScreenShare={handleStopScreenShare}
       />
+
+      {/* Mode Switcher Button (Top Right Floating) */}
+      <div className="absolute top-12 left-4 z-40">
+        <button
+          onClick={() => setViewMode('compact_companion')}
+          className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700 text-xs font-semibold shadow-xl flex items-center gap-1.5 transition-all"
+        >
+          <Minimize2 className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Switch to Side Companion Widget</span>
+        </button>
+      </div>
 
       {/* 2. Interactive Screen Physics Canvas (Cracks, Paint, Water, Laser) */}
       <ScreenCanvas
