@@ -16,11 +16,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
@@ -36,7 +39,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-// Data classes for visual effects
+// Tool types for desktop fidget interactions
+enum class DesktopTool {
+    BOXING_GLOVE, SAPU_BROOM, WATER_GUN, PAINT_CANNON, LASER
+}
+
+// Cat living behavior states
+enum class CatBehavior {
+    WALKING_LEFT, WALKING_RIGHT, SITTING, LOAFING, SLEEPING, PETTED
+}
+
+// Procedural screen shatter fracture data structures
 data class ScreenCrack(
     val id: String,
     val x: Float,
@@ -78,298 +91,508 @@ data class SplatterDrip(
     val offsetX: Float
 )
 
-enum class DesktopTool {
-    BOXING_GLOVE, SAPU_BROOM, WATER_GUN, PAINT_CANNON, LASER
-}
-
-enum class WindowMode {
-    COMPACT_PET, // Small floating widget in the corner — other apps remain 100% clickable!
-    FULLSCREEN_STRESS_RELIEF // Full-screen overlay to punch, paint, and fidget
-}
+data class WaterSplash(
+    val x: Float,
+    val y: Float,
+    val radius: Float,
+    val alpha: Float = 0.8f
+)
 
 fun main() = application {
     val screenSize = Toolkit.getDefaultToolkit().screenSize
-    val petWidth = 330.dp
-    val petHeight = 390.dp
 
-    var windowMode by remember { mutableStateOf(WindowMode.COMPACT_PET) }
-
-    // Start as a compact floating widget near bottom-right so the user can freely work
-    val initialX = ((screenSize.width - 360).coerceAtLeast(50)).dp
-    val initialY = ((screenSize.height - 460).coerceAtLeast(50)).dp
-
-    val windowState = rememberWindowState(
-        position = WindowPosition(initialX, initialY),
-        size = DpSize(petWidth, petHeight)
-    )
-
-    // Sync window size & position when toggling between Compact Desk Pet and Full-Screen Mode
-    LaunchedEffect(windowMode) {
-        if (windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
-            windowState.position = WindowPosition(0.dp, 0.dp)
-            windowState.size = DpSize(screenSize.width.dp, screenSize.height.dp)
-        } else {
-            windowState.position = WindowPosition(initialX, initialY)
-            windowState.size = DpSize(petWidth, petHeight)
-        }
-    }
-
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "DeskToy & Focus Buddy",
-        state = windowState,
-        alwaysOnTop = true,
-        undecorated = true,
-        transparent = true,
-        onKeyEvent = { keyEvent ->
-            if (keyEvent.key == Key.Escape && windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
-                windowMode = WindowMode.COMPACT_PET
-                true
-            } else {
-                false
-            }
-        }
-    ) {
-        if (windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
-            // Full-Screen Stress Relief Mode
-            FullScreenStressReliefOverlay(
-                onBackToWork = { windowMode = WindowMode.COMPACT_PET }
-            )
-        } else {
-            // Compact Floating Desk Companion Widget (Non-obstructive)
-            CompactDeskPetWidget(
-                onOpenStressRelief = { windowMode = WindowMode.FULLSCREEN_STRESS_RELIEF },
-                onClose = ::exitApplication
-            )
-        }
-    }
-}
-
-/**
- * Compact Floating Desk Pet Widget.
- * Only occupies a small corner of the screen so all other desktop apps remain completely clickable!
- */
-@Composable
-fun androidx.compose.ui.window.WindowScope.CompactDeskPetWidget(
-    onOpenStressRelief: () -> Unit,
-    onClose: () -> Unit
-) {
-    var catHappiness by remember { mutableStateOf(100) }
-    var petCount by remember { mutableStateOf(0) }
-    var catThought by remember { mutableStateOf("Ready to focus together! 🐾") }
-    var coachMessage by remember { mutableStateOf("Keep going! You're crushing it today 🚀") }
-
-    LaunchedEffect(Unit) {
-        val quotes = listOf(
-            "Take 3 deep breaths, pet the cat, then back to work!",
-            "Did that tab solve your problem yet? Stay in the zone!",
-            "Dopamine is cheap, shipping working software is priceless.",
-            "Punch the screen in Stress Mode if you hit a wall!",
-            "You are making steady progress! Keep focusing 🎯"
-        )
-        while (true) {
-            delay(35000)
-            coachMessage = quotes.random()
-        }
-    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xF20F172A),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4038BDF8)),
-        shadowElevation = 12.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Draggable Window Title Header
-            WindowDraggableArea {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text("🐾", fontSize = 16.sp)
-                        Text(
-                            text = "Focus Buddy",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFF10B981).copy(alpha = 0.25f)
-                        ) {
-                            Text(
-                                "WORK MODE",
-                                color = Color(0xFF34D399),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Text("✕", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                    }
-                }
-            }
-
-            // Cat Mascot & Dialogue
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Cat Speech Bubble
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF1E293B),
-                    modifier = Modifier.padding(bottom = 6.dp)
-                ) {
-                    Text(
-                        text = catThought,
-                        color = Color(0xFFFDE68A),
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-
-                // Interactive Cat Avatar (Click to Pet)
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFFF59E0B),
-                    modifier = Modifier
-                        .size(80.dp, 56.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures {
-                                petCount++
-                                catHappiness = (catHappiness + 10).coerceAtMost(100)
-                                catThought = "Purrrrr! 💖 (Pets: $petCount)"
-                            }
-                        }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("🐱", fontSize = 32.sp)
-                    }
-                }
-
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Click cat to pet ($petCount)",
-                    color = Color(0xFF94A3B8),
-                    fontSize = 10.sp
-                )
-            }
-
-            // Focus Coach Reminder Card
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF1E293B).copy(alpha = 0.85f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("👔", fontSize = 18.sp)
-                    Text(
-                        text = coachMessage,
-                        color = Color(0xFFE2E8F0),
-                        fontSize = 10.5.sp,
-                        lineHeight = 14.sp
-                    )
-                }
-            }
-
-            // Action Buttons
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Stress Relief Full-Screen Mode Button
-                Button(
-                    onClick = onOpenStressRelief,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(36.dp),
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Text("💥 Stress Relief (Punch Screen)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Quick Pet Action Button
-                    Button(
-                        onClick = {
-                            petCount++
-                            catHappiness = (catHappiness + 10).coerceAtMost(100)
-                            catThought = "Purrrrr! 🐾 Feeling great!"
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(32.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("🐾 Pet Cat", fontSize = 10.5.sp, color = Color.White)
-                    }
-
-                    // Tip Label
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF1E293B),
-                        modifier = Modifier.weight(1f).height(32.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("Drag to move", fontSize = 10.sp, color = Color(0xFF64748B))
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Full-Screen Stress Relief Overlay.
- * Allows punching the monitor with procedural glass cracks, spraying paint, sweeping, and laser pointer.
- * Includes prominent "Back to Work" controls and Esc key escape.
- */
-@Composable
-fun FullScreenStressReliefOverlay(
-    onBackToWork: () -> Unit
-) {
-    var activeTool by remember { mutableStateOf(DesktopTool.BOXING_GLOVE) }
+    // Active tool state:
+    // When activeTool == null:
+    // -> CAT MODE: Full screen is 100% UNBLOCKED.
+    // -> The Cat window is a compact transparent cutout that walks/sits live on your screen over your apps.
+    // When activeTool != null (Punch, Broom, Paint, Water):
+    // -> ACTION OVERLAY MODE: Full-screen canvas allows punching fractures, spraying water/paint, sweeping.
+    var activeTool by remember { mutableStateOf<DesktopTool?>(null) }
     var punchLevel by remember { mutableStateOf(2) }
+
+    // Screen persistent effect lists
     val cracks = remember { mutableStateListOf<ScreenCrack>() }
     val splatters = remember { mutableStateListOf<PaintSplatter>() }
-    var mousePos by remember { mutableStateOf(Offset(200f, 200f)) }
-    var laserPos by remember { mutableStateOf<Offset?>(null) }
+    val waterSplashes = remember { mutableStateListOf<WaterSplash>() }
 
+    // Cat Position & Behavior State (Moves across user's screen)
+    val catWindowWidth = 280.dp
+    val catWindowHeight = 190.dp
+    var catX by remember { mutableStateOf((screenSize.width - 340).toFloat().coerceAtLeast(40f)) }
+    var catY by remember { mutableStateOf((screenSize.height - 250).toFloat().coerceAtLeast(40f)) }
+    var catBehavior by remember { mutableStateOf(CatBehavior.SITTING) }
+    var catPetCount by remember { mutableStateOf(0) }
+    var catThought by remember { mutableStateOf("Meow! Focus buddy on duty! 🐾") }
+
+    val catWindowState = rememberWindowState(
+        position = WindowPosition(catX.dp, catY.dp),
+        size = DpSize(catWindowWidth, catWindowHeight)
+    )
+
+    // Autonomous Cat life simulation: wandering, sitting, loafing, sleeping
+    LaunchedEffect(Unit) {
+        var tick = 0
+        while (true) {
+            delay(120)
+            tick++
+
+            // Change behavioral goals every ~10-15 seconds
+            if (tick % 90 == 0 && catBehavior != CatBehavior.PETTED) {
+                val roll = Random.nextInt(100)
+                catBehavior = when {
+                    roll < 30 -> CatBehavior.WALKING_LEFT
+                    roll < 60 -> CatBehavior.WALKING_RIGHT
+                    roll < 80 -> CatBehavior.SITTING
+                    roll < 92 -> CatBehavior.LOAFING
+                    else -> CatBehavior.SLEEPING
+                }
+
+                catThought = when (catBehavior) {
+                    CatBehavior.WALKING_LEFT, CatBehavior.WALKING_RIGHT -> listOf(
+                        "Patrolling your desktop... 🐾",
+                        "Checking your open tabs...",
+                        "No YouTube allowed right now! 😼",
+                        "Stretch those legs! 🐾"
+                    ).random()
+                    CatBehavior.SITTING -> listOf(
+                        "Watching you write great code! ✨",
+                        "Sitting by your side. You got this!",
+                        "Purr... Don't forget to sip water!",
+                        "Deep breath. Code looks clean! 💻"
+                    ).random()
+                    CatBehavior.LOAFING -> "Loaf mode activated 🍞 Cozy focus!"
+                    CatBehavior.SLEEPING -> "Zzz... Resting one eye while you code... 💤"
+                    else -> catThought
+                }
+            }
+
+            // Movement logic
+            if (catBehavior == CatBehavior.WALKING_LEFT) {
+                catX -= 2.5f
+                if (catX <= 40f) {
+                    catBehavior = CatBehavior.WALKING_RIGHT
+                }
+                catWindowState.position = WindowPosition(catX.dp, catY.dp)
+            } else if (catBehavior == CatBehavior.WALKING_RIGHT) {
+                catX += 2.5f
+                if (catX >= screenSize.width - 320f) {
+                    catBehavior = CatBehavior.WALKING_LEFT
+                }
+                catWindowState.position = WindowPosition(catX.dp, catY.dp)
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // WINDOW 1: LIVE ON-SCREEN CAT (Always visible, moves freely on screen, NEVER blocks clicks)
+    // -----------------------------------------------------------------------------------------
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "Live Desk Cat Companion",
+        state = catWindowState,
+        alwaysOnTop = true,
+        undecorated = true,
+        transparent = true
+    ) {
+        LiveDeskCatView(
+            behavior = catBehavior,
+            petCount = catPetCount,
+            thought = catThought,
+            activeTool = activeTool,
+            onPetCat = {
+                catPetCount++
+                catBehavior = CatBehavior.PETTED
+                catThought = "Purrrrrrr! 💖 Feels so good! (Pets: $catPetCount)"
+            },
+            onSelectTool = { tool ->
+                activeTool = if (activeTool == tool) null else tool
+            },
+            onClose = ::exitApplication
+        )
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // WINDOW 2: FULL-SCREEN INTERACTIVE ACTION OVERLAY (Only visible when a tool is selected!)
+    // When activeTool == null, this window does not exist, so clicks pass directly to other apps!
+    // -----------------------------------------------------------------------------------------
+    if (activeTool != null) {
+        val fullscreenState = rememberWindowState(
+            position = WindowPosition(0.dp, 0.dp),
+            size = DpSize(screenSize.width.dp, screenSize.height.dp)
+        )
+
+        Window(
+            onCloseRequest = { activeTool = null },
+            title = "DeskToy Screen Action Overlay",
+            state = fullscreenState,
+            alwaysOnTop = true,
+            undecorated = true,
+            transparent = true,
+            onKeyEvent = { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.key) {
+                        Key.Escape -> {
+                            activeTool = null
+                            true
+                        }
+                        Key.One -> {
+                            activeTool = null
+                            true
+                        }
+                        Key.Two -> {
+                            activeTool = DesktopTool.BOXING_GLOVE
+                            true
+                        }
+                        Key.Three -> {
+                            activeTool = DesktopTool.SAPU_BROOM
+                            true
+                        }
+                        Key.Four -> {
+                            activeTool = DesktopTool.PAINT_CANNON
+                            true
+                        }
+                        Key.Five -> {
+                            activeTool = DesktopTool.WATER_GUN
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+        ) {
+            FullScreenActionOverlay(
+                activeTool = activeTool!!,
+                punchLevel = punchLevel,
+                cracks = cracks,
+                splatters = splatters,
+                waterSplashes = waterSplashes,
+                onPunchLevelChange = { punchLevel = if (punchLevel >= 3) 1 else punchLevel + 1 },
+                onSelectTool = { tool -> activeTool = tool },
+                onReturnToWork = { activeTool = null },
+                onCleanScreen = {
+                    cracks.clear()
+                    splatters.clear()
+                    waterSplashes.clear()
+                    activeTool = null
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Cutout Live Cat that walks, loafs, sits, and reacts directly on your desktop.
+ * Sized tightly to the cat so 99% of your screen is completely free and clickable!
+ */
+@Composable
+fun androidx.compose.ui.window.WindowScope.LiveDeskCatView(
+    behavior: CatBehavior,
+    petCount: Int,
+    thought: String,
+    activeTool: DesktopTool?,
+    onPetCat: () -> Unit,
+    onSelectTool: (DesktopTool) -> Unit,
+    onClose: () -> Unit
+) {
+    var isHovered by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom
+    ) {
+        // 1. Thought Bubble (Dynamic Dialogue)
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xF00F172A),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x60F59E0B)),
+            shadowElevation = 8.dp,
+            modifier = Modifier.padding(bottom = 6.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = when (behavior) {
+                        CatBehavior.SLEEPING -> "💤 $thought"
+                        CatBehavior.PETTED -> "💖 $thought"
+                        CatBehavior.LOAFING -> "🍞 $thought"
+                        else -> "💭 $thought"
+                    },
+                    color = Color(0xFFFEF3C7),
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // 2. Animated Cutout Cat Body (Draggable + Click to Pet)
+        WindowDraggableArea {
+            Box(
+                modifier = Modifier
+                    .size(110.dp, 82.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { onPetCat() })
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                // Procedural Illustrated Animated Cat
+                ProceduralCatCanvas(behavior = behavior)
+
+                // Close Button on hover
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp)
+                        .background(Color(0x99000000), CircleShape)
+                ) {
+                    Text("✕", color = Color.White, fontSize = 9.sp)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // 3. Mini Floating Tool Switcher Bar
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xEE0F172A),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4038BDF8)),
+            shadowElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Pet / Cat Mode Indicator (Active when no tools are intercepting screen)
+                Surface(
+                    onClick = onPetCat,
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (activeTool == null) Color(0xFF10B981) else Color(0xFF334155),
+                    modifier = Modifier.height(24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text("🐾", fontSize = 11.sp)
+                        Text(
+                            text = if (petCount > 0) "$petCount" else "Pet",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Punch Tool
+                MiniToolButton(
+                    emoji = "🥊",
+                    title = "Punch",
+                    isSelected = activeTool == DesktopTool.BOXING_GLOVE,
+                    activeColor = Color(0xFFEF4444),
+                    onClick = { onSelectTool(DesktopTool.BOXING_GLOVE) }
+                )
+
+                // Broom Tool
+                MiniToolButton(
+                    emoji = "🧹",
+                    title = "Broom",
+                    isSelected = activeTool == DesktopTool.SAPU_BROOM,
+                    activeColor = Color(0xFF10B981),
+                    onClick = { onSelectTool(DesktopTool.SAPU_BROOM) }
+                )
+
+                // Paint Tool
+                MiniToolButton(
+                    emoji = "🎨",
+                    title = "Paint",
+                    isSelected = activeTool == DesktopTool.PAINT_CANNON,
+                    activeColor = Color(0xFF8B5CF6),
+                    onClick = { onSelectTool(DesktopTool.PAINT_CANNON) }
+                )
+
+                // Water Gun Tool
+                MiniToolButton(
+                    emoji = "💧",
+                    title = "Water",
+                    isSelected = activeTool == DesktopTool.WATER_GUN,
+                    activeColor = Color(0xFF0EA5E9),
+                    onClick = { onSelectTool(DesktopTool.WATER_GUN) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MiniToolButton(
+    emoji: String,
+    title: String,
+    isSelected: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) activeColor else Color.Transparent,
+        modifier = Modifier.size(24.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(emoji, fontSize = 12.sp)
+        }
+    }
+}
+
+/**
+ * Procedural Vector Cat with animated tail, ears, and responsive facial expressions.
+ */
+@Composable
+fun ProceduralCatCanvas(behavior: CatBehavior) {
+    var animFrame by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(behavior) {
+        while (true) {
+            delay(50)
+            animFrame = (animFrame + 0.15f) % (2f * Math.PI.toFloat())
+        }
+    }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val catOrange = Color(0xFFF59E0B)
+        val catShadow = Color(0xFFD97706)
+        val catWhite = Color(0xFFFFFBEB)
+        val catPink = Color(0xFFF472B6)
+
+        val tailWag = sin(animFrame * 2f) * 12f
+        val breath = sin(animFrame) * 1.5f
+
+        // Tail
+        val tailPath = Path().apply {
+            moveTo(size.width * 0.22f, size.height * 0.72f)
+            quadraticTo(
+                size.width * 0.08f + tailWag,
+                size.height * 0.5f,
+                size.width * 0.14f + tailWag * 1.2f,
+                size.height * 0.35f
+            )
+        }
+        drawPath(
+            path = tailPath,
+            color = catShadow,
+            style = Stroke(width = 8f)
+        )
+
+        // Cat Body
+        drawRoundRect(
+            color = catOrange,
+            topLeft = Offset(size.width * 0.18f, size.height * 0.40f - breath),
+            size = Size(size.width * 0.62f, size.height * 0.46f + breath),
+            cornerRadius = CornerRadius(28f, 28f)
+        )
+
+        // White belly patch
+        drawRoundRect(
+            color = catWhite,
+            topLeft = Offset(size.width * 0.32f, size.height * 0.52f),
+            size = Size(size.width * 0.36f, size.height * 0.32f),
+            cornerRadius = CornerRadius(20f, 20f)
+        )
+
+        // Cat Head
+        val headY = size.height * 0.28f - breath * 0.5f
+        drawCircle(
+            color = catOrange,
+            radius = 28f,
+            center = Offset(size.width * 0.68f, headY)
+        )
+
+        // Ears
+        val leftEar = Path().apply {
+            moveTo(size.width * 0.60f, headY - 18f)
+            lineTo(size.width * 0.56f, headY - 38f)
+            lineTo(size.width * 0.66f, headY - 26f)
+            close()
+        }
+        val rightEar = Path().apply {
+            moveTo(size.width * 0.72f, headY - 26f)
+            lineTo(size.width * 0.82f, headY - 38f)
+            lineTo(size.width * 0.78f, headY - 18f)
+            close()
+        }
+        drawPath(leftEar, catOrange)
+        drawPath(rightEar, catOrange)
+        drawPath(leftEar, catPink, style = Stroke(width = 2f))
+        drawPath(rightEar, catPink, style = Stroke(width = 2f))
+
+        // Eyes based on behavior
+        when (behavior) {
+            CatBehavior.SLEEPING -> {
+                // Sleeping closed curved eyes "- -"
+                drawLine(Color(0xFF78350F), Offset(size.width * 0.64f, headY - 4f), Offset(size.width * 0.68f, headY - 4f), 2.5f)
+                drawLine(Color(0xFF78350F), Offset(size.width * 0.74f, headY - 4f), Offset(size.width * 0.78f, headY - 4f), 2.5f)
+            }
+            CatBehavior.PETTED -> {
+                // Happy closed curved eyes "^ ^"
+                drawLine(Color(0xFFB45309), Offset(size.width * 0.64f, headY - 3f), Offset(size.width * 0.66f, headY - 7f), 2.5f)
+                drawLine(Color(0xFFB45309), Offset(size.width * 0.66f, headY - 7f), Offset(size.width * 0.68f, headY - 3f), 2.5f)
+                drawLine(Color(0xFFB45309), Offset(size.width * 0.74f, headY - 3f), Offset(size.width * 0.76f, headY - 7f), 2.5f)
+                drawLine(Color(0xFFB45309), Offset(size.width * 0.76f, headY - 7f), Offset(size.width * 0.78f, headY - 3f), 2.5f)
+            }
+            else -> {
+                // Big shiny eyes "• •"
+                drawCircle(Color(0xFF1E293B), radius = 4f, center = Offset(size.width * 0.66f, headY - 4f))
+                drawCircle(Color(0xFF1E293B), radius = 4f, center = Offset(size.width * 0.76f, headY - 4f))
+                // Glint
+                drawCircle(Color.White, radius = 1.5f, center = Offset(size.width * 0.65f, headY - 5f))
+                drawCircle(Color.White, radius = 1.5f, center = Offset(size.width * 0.75f, headY - 5f))
+            }
+        }
+
+        // Cute Pink Nose & Mouth
+        drawCircle(catPink, radius = 2f, center = Offset(size.width * 0.71f, headY + 3f))
+
+        // Whiskers
+        drawLine(Color(0xFF78350F), Offset(size.width * 0.58f, headY + 1f), Offset(size.width * 0.50f, headY - 2f), 1.2f)
+        drawLine(Color(0xFF78350F), Offset(size.width * 0.58f, headY + 4f), Offset(size.width * 0.50f, headY + 5f), 1.2f)
+        drawLine(Color(0xFF78350F), Offset(size.width * 0.82f, headY + 1f), Offset(size.width * 0.90f, headY - 2f), 1.2f)
+        drawLine(Color(0xFF78350F), Offset(size.width * 0.82f, headY + 4f), Offset(size.width * 0.90f, headY + 5f), 1.2f)
+
+        // Paws
+        drawCircle(catWhite, radius = 8f, center = Offset(size.width * 0.36f, size.height * 0.84f))
+        drawCircle(catWhite, radius = 8f, center = Offset(size.width * 0.64f, size.height * 0.84f))
+    }
+}
+
+/**
+ * Full-Screen Interaction Canvas.
+ * Activated ONLY when user chooses Punch, Broom, Paint, or Water Gun.
+ * Intercepts clicks to render realistic procedural cracks, splashes, and broom cleanup.
+ */
+@Composable
+fun FullScreenActionOverlay(
+    activeTool: DesktopTool,
+    punchLevel: Int,
+    cracks: MutableList<ScreenCrack>,
+    splatters: MutableList<PaintSplatter>,
+    waterSplashes: MutableList<WaterSplash>,
+    onPunchLevelChange: () -> Unit,
+    onSelectTool: (DesktopTool) -> Unit,
+    onReturnToWork: () -> Unit,
+    onCleanScreen: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
             .pointerInput(activeTool, punchLevel) {
                 detectTapGestures { tapPos ->
-                    mousePos = tapPos
                     when (activeTool) {
                         DesktopTool.BOXING_GLOVE -> {
                             val numRays = 8 + punchLevel * 4
@@ -404,6 +627,15 @@ fun FullScreenStressReliefOverlay(
                                 )
                             )
                         }
+                        DesktopTool.WATER_GUN -> {
+                            waterSplashes.add(
+                                WaterSplash(
+                                    x = tapPos.x,
+                                    y = tapPos.y,
+                                    radius = 35f + Random.nextFloat() * 25f
+                                )
+                            )
+                        }
                         DesktopTool.PAINT_CANNON -> {
                             val colors = listOf(Color(0xFFEF4444), Color(0xFF10B981), Color(0xFF3B82F6), Color(0xFFF59E0B), Color(0xFFEC4899))
                             val drips = (1..4).map {
@@ -427,16 +659,18 @@ fun FullScreenStressReliefOverlay(
                             cracks.removeAll {
                                 val dx = it.x - tapPos.x
                                 val dy = it.y - tapPos.y
-                                (dx * dx + dy * dy) < 18000f
+                                (dx * dx + dy * dy) < 22000f
                             }
                             splatters.removeAll {
                                 val dx = it.x - tapPos.x
                                 val dy = it.y - tapPos.y
-                                (dx * dx + dy * dy) < 18000f
+                                (dx * dx + dy * dy) < 22000f
                             }
-                        }
-                        DesktopTool.LASER -> {
-                            laserPos = tapPos
+                            waterSplashes.removeAll {
+                                val dx = it.x - tapPos.x
+                                val dy = it.y - tapPos.y
+                                (dx * dx + dy * dy) < 22000f
+                            }
                         }
                         else -> {}
                     }
@@ -444,27 +678,49 @@ fun FullScreenStressReliefOverlay(
             }
             .pointerInput(activeTool) {
                 detectDragGestures { change, _ ->
-                    mousePos = change.position
                     val dragPos = change.position
                     if (activeTool == DesktopTool.SAPU_BROOM) {
                         cracks.removeAll {
                             val dx = it.x - dragPos.x
                             val dy = it.y - dragPos.y
-                            (dx * dx + dy * dy) < 18000f
+                            (dx * dx + dy * dy) < 22000f
                         }
                         splatters.removeAll {
                             val dx = it.x - dragPos.x
                             val dy = it.y - dragPos.y
-                            (dx * dx + dy * dy) < 18000f
+                            (dx * dx + dy * dy) < 22000f
                         }
-                    } else if (activeTool == DesktopTool.LASER) {
-                        laserPos = dragPos
+                        waterSplashes.removeAll {
+                            val dx = it.x - dragPos.x
+                            val dy = it.y - dragPos.y
+                            (dx * dx + dy * dy) < 22000f
+                        }
                     }
                 }
             }
     ) {
-        // Procedural Crack & Paint Canvas
+        // Canvas Rendering Layer
         Canvas(modifier = Modifier.fillMaxSize()) {
+            // 1. Water Splashes
+            for (splash in waterSplashes) {
+                drawCircle(
+                    color = Color(0x6638BDF8),
+                    radius = splash.radius,
+                    center = Offset(splash.x, splash.y)
+                )
+                drawCircle(
+                    color = Color(0x99BAE6FD),
+                    radius = splash.radius * 0.6f,
+                    center = Offset(splash.x, splash.y)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.8f),
+                    radius = splash.radius * 0.2f,
+                    center = Offset(splash.x - splash.radius * 0.2f, splash.y - splash.radius * 0.2f)
+                )
+            }
+
+            // 2. Procedural Cracks
             for (crack in cracks) {
                 drawCircle(
                     color = Color.White.copy(alpha = 0.9f),
@@ -517,12 +773,13 @@ fun FullScreenStressReliefOverlay(
                         sweepAngle = ((ring.endAngle - ring.startAngle) * 180 / Math.PI).toFloat(),
                         useCenter = false,
                         topLeft = Offset(crack.x - ring.radius, crack.y - ring.radius),
-                        size = androidx.compose.ui.geometry.Size(ring.radius * 2, ring.radius * 2),
+                        size = Size(ring.radius * 2, ring.radius * 2),
                         style = Stroke(width = 1.2f)
                     )
                 }
             }
 
+            // 3. Paint Splatters
             for (splatter in splatters) {
                 drawCircle(
                     color = splatter.color,
@@ -538,15 +795,9 @@ fun FullScreenStressReliefOverlay(
                     )
                 }
             }
-
-            laserPos?.let { pos ->
-                drawCircle(color = Color.Red.copy(alpha = 0.3f), radius = 20f, center = pos)
-                drawCircle(color = Color.Red, radius = 6f, center = pos)
-                drawCircle(color = Color.White, radius = 2.5f, center = pos)
-            }
         }
 
-        // Top Status & "Back to Work" Navigation Bar
+        // Top Navigation Control Bar
         Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -559,39 +810,39 @@ fun FullScreenStressReliefOverlay(
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("💥", fontSize = 16.sp)
-                    Text(
-                        text = "Stress Relief Active (Click anywhere to punch / paint)",
-                        color = Color(0xFFFCA5A5),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    text = when (activeTool) {
+                        DesktopTool.BOXING_GLOVE -> "🥊 Screen Punch Active (Click anywhere to shatter)"
+                        DesktopTool.SAPU_BROOM -> "🧹 Broom Active (Drag to sweep & clean cracks)"
+                        DesktopTool.PAINT_CANNON -> "🎨 Paint Cannon Active (Click to spray acrylics)"
+                        DesktopTool.WATER_GUN -> "💧 Water Gun Active (Click to splash water)"
+                        else -> "Screen Tool Active"
+                    },
+                    color = Color(0xFFFDE68A),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
 
+                // Back to Work / Cat Mode
                 Button(
-                    onClick = onBackToWork,
+                    onClick = onReturnToWork,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Text("💻 Back to Work (Esc)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("🐾 Back to Work (Esc)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
+                // Clean & Resume Work
                 Button(
-                    onClick = {
-                        cracks.clear()
-                        splatters.clear()
-                        laserPos = null
-                        onBackToWork()
-                    },
+                    onClick = onCleanScreen,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text("🧹 Clean & Resume", color = Color(0xFFE2E8F0), fontSize = 12.sp)
+                    Text("🧹 Clean All", color = Color(0xFFE2E8F0), fontSize = 12.sp)
                 }
             }
         }
@@ -610,56 +861,50 @@ fun FullScreenStressReliefOverlay(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { activeTool = DesktopTool.BOXING_GLOVE },
+                    onClick = onReturnToWork,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
+                ) {
+                    Text("🐾 [1] Cat Mode")
+                }
+
+                Button(
+                    onClick = { onSelectTool(DesktopTool.BOXING_GLOVE) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (activeTool == DesktopTool.BOXING_GLOVE) Color(0xFFEF4444) else Color(0xFF334155)
                     )
                 ) {
-                    Text("🥊 Boxing Glove (${when (punchLevel) { 1 -> "1x"; 2 -> "2x"; else -> "MAX" }})")
+                    Text("🥊 [2] Punch (${when (punchLevel) { 1 -> "1x"; 2 -> "2x"; else -> "MAX" }})")
                 }
 
-                IconButton(
-                    onClick = { punchLevel = if (punchLevel >= 3) 1 else punchLevel + 1 }
-                ) {
+                IconButton(onClick = onPunchLevelChange) {
                     Text("⚡", fontSize = 16.sp)
                 }
 
                 Button(
-                    onClick = { activeTool = DesktopTool.SAPU_BROOM },
+                    onClick = { onSelectTool(DesktopTool.SAPU_BROOM) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (activeTool == DesktopTool.SAPU_BROOM) Color(0xFF10B981) else Color(0xFF334155)
                     )
                 ) {
-                    Text("🧹 Sapu / Broom")
+                    Text("🧹 [3] Broom")
                 }
 
                 Button(
-                    onClick = { activeTool = DesktopTool.PAINT_CANNON },
+                    onClick = { onSelectTool(DesktopTool.PAINT_CANNON) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (activeTool == DesktopTool.PAINT_CANNON) Color(0xFF8B5CF6) else Color(0xFF334155)
                     )
                 ) {
-                    Text("🎨 Paint")
+                    Text("🎨 [4] Paint")
                 }
 
                 Button(
-                    onClick = { activeTool = DesktopTool.LASER },
+                    onClick = { onSelectTool(DesktopTool.WATER_GUN) },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (activeTool == DesktopTool.LASER) Color(0xFFEC4899) else Color(0xFF334155)
+                        containerColor = if (activeTool == DesktopTool.WATER_GUN) Color(0xFF0EA5E9) else Color(0xFF334155)
                     )
                 ) {
-                    Text("🔴 Laser")
-                }
-
-                Button(
-                    onClick = {
-                        cracks.clear()
-                        splatters.clear()
-                        laserPos = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569))
-                ) {
-                    Text("✨ Clear Effects")
+                    Text("💧 [5] Water")
                 }
             }
         }
