@@ -4,28 +4,27 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +40,7 @@ import kotlin.random.Random
 
 // Tool types for desktop fidget interactions
 enum class DesktopTool {
-    BOXING_GLOVE, SAPU_BROOM, WATER_GUN, PAINT_CANNON, LASER
+    BOXING_GLOVE, SAPU_BROOM, WATER_GUN, PAINT_CANNON
 }
 
 // Cat living behavior states
@@ -94,8 +93,7 @@ data class SplatterDrip(
 data class WaterSplash(
     val x: Float,
     val y: Float,
-    val radius: Float,
-    val alpha: Float = 0.8f
+    val radius: Float
 )
 
 fun main() = application {
@@ -116,10 +114,10 @@ fun main() = application {
     val waterSplashes = remember { mutableStateListOf<WaterSplash>() }
 
     // Cat Position & Behavior State (Moves across user's screen)
-    val catWindowWidth = 280.dp
-    val catWindowHeight = 190.dp
-    var catX by remember { mutableStateOf((screenSize.width - 340).toFloat().coerceAtLeast(40f)) }
-    var catY by remember { mutableStateOf((screenSize.height - 250).toFloat().coerceAtLeast(40f)) }
+    val catWindowWidth = 240.dp
+    val catWindowHeight = 175.dp
+    var catX by remember { mutableStateOf((screenSize.width - 320).toFloat().coerceAtLeast(40f)) }
+    var catY by remember { mutableStateOf((screenSize.height - 230).toFloat().coerceAtLeast(40f)) }
     var catBehavior by remember { mutableStateOf(CatBehavior.SITTING) }
     var catPetCount by remember { mutableStateOf(0) }
     var catThought by remember { mutableStateOf("Meow! Focus buddy on duty! 🐾") }
@@ -169,13 +167,13 @@ fun main() = application {
             // Movement logic
             if (catBehavior == CatBehavior.WALKING_LEFT) {
                 catX -= 2.5f
-                if (catX <= 40f) {
+                if (catX <= 30f) {
                     catBehavior = CatBehavior.WALKING_RIGHT
                 }
                 catWindowState.position = WindowPosition(catX.dp, catY.dp)
             } else if (catBehavior == CatBehavior.WALKING_RIGHT) {
                 catX += 2.5f
-                if (catX >= screenSize.width - 320f) {
+                if (catX >= screenSize.width - 260f) {
                     catBehavior = CatBehavior.WALKING_LEFT
                 }
                 catWindowState.position = WindowPosition(catX.dp, catY.dp)
@@ -184,28 +182,84 @@ fun main() = application {
     }
 
     // -----------------------------------------------------------------------------------------
-    // WINDOW 1: LIVE ON-SCREEN CAT (Always visible, moves freely on screen, NEVER blocks clicks)
+    // WINDOW 1: LIVE ON-SCREEN LOW-POLY CAT (Poly Pizza 6dM1J6f6pm9)
+    // Always visible, moves freely on screen, NEVER blocks clicks on other apps!
+    // NO annoying bottom bar. Pure desktop companion.
     // -----------------------------------------------------------------------------------------
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Live Desk Cat Companion",
+        title = "Live Low-Poly Desk Cat Companion",
         state = catWindowState,
         alwaysOnTop = true,
         undecorated = true,
-        transparent = true
+        transparent = true,
+        onKeyEvent = { keyEvent ->
+            if (keyEvent.type == KeyEventType.KeyDown) {
+                when (keyEvent.key) {
+                    Key.One -> {
+                        activeTool = null
+                        true
+                    }
+                    Key.Two -> {
+                        activeTool = DesktopTool.BOXING_GLOVE
+                        true
+                    }
+                    Key.Three -> {
+                        activeTool = DesktopTool.SAPU_BROOM
+                        true
+                    }
+                    Key.Four -> {
+                        activeTool = DesktopTool.PAINT_CANNON
+                        true
+                    }
+                    Key.Five -> {
+                        activeTool = DesktopTool.WATER_GUN
+                        true
+                    }
+                    Key.P -> {
+                        catPetCount++
+                        catBehavior = CatBehavior.PETTED
+                        catThought = "Purrrrrrr! 💖 Feels amazing! (Pets: $catPetCount)"
+                        true
+                    }
+                    Key.C -> {
+                        // Cycle cat pose
+                        catBehavior = when (catBehavior) {
+                            CatBehavior.SITTING -> CatBehavior.WALKING_RIGHT
+                            CatBehavior.WALKING_RIGHT -> CatBehavior.LOAFING
+                            CatBehavior.LOAFING -> CatBehavior.SLEEPING
+                            else -> CatBehavior.SITTING
+                        }
+                        true
+                    }
+                    Key.Q -> {
+                        exitApplication()
+                        true
+                    }
+                    else -> false
+                }
+            } else false
+        }
     ) {
         LiveDeskCatView(
             behavior = catBehavior,
-            petCount = catPetCount,
             thought = catThought,
-            activeTool = activeTool,
+            petCount = catPetCount,
             onPetCat = {
                 catPetCount++
                 catBehavior = CatBehavior.PETTED
-                catThought = "Purrrrrrr! 💖 Feels so good! (Pets: $catPetCount)"
+                catThought = "Purrrrrrr! 💖 Feels amazing! (Pets: $catPetCount)"
             },
             onSelectTool = { tool ->
-                activeTool = if (activeTool == tool) null else tool
+                activeTool = tool
+            },
+            onCyclePose = {
+                catBehavior = when (catBehavior) {
+                    CatBehavior.SITTING -> CatBehavior.WALKING_RIGHT
+                    CatBehavior.WALKING_RIGHT -> CatBehavior.LOAFING
+                    CatBehavior.LOAFING -> CatBehavior.SLEEPING
+                    else -> CatBehavior.SITTING
+                }
             },
             onClose = ::exitApplication
         )
@@ -213,7 +267,7 @@ fun main() = application {
 
     // -----------------------------------------------------------------------------------------
     // WINDOW 2: FULL-SCREEN INTERACTIVE ACTION OVERLAY (Only visible when a tool is selected!)
-    // When activeTool == null, this window does not exist, so clicks pass directly to other apps!
+    // When activeTool == null, this window does NOT exist, so clicks pass directly to other apps!
     // -----------------------------------------------------------------------------------------
     if (activeTool != null) {
         val fullscreenState = rememberWindowState(
@@ -231,11 +285,7 @@ fun main() = application {
             onKeyEvent = { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     when (keyEvent.key) {
-                        Key.Escape -> {
-                            activeTool = null
-                            true
-                        }
-                        Key.One -> {
+                        Key.Escape, Key.One -> {
                             activeTool = null
                             true
                         }
@@ -281,38 +331,59 @@ fun main() = application {
 }
 
 /**
- * Cutout Live Cat that walks, loafs, sits, and reacts directly on your desktop.
- * Sized tightly to the cat so 99% of your screen is completely free and clickable!
+ * Cutout Live Low-Poly Cat from Poly Pizza (6dM1J6f6pm9).
+ * Completely clean without any annoying bottom bars or intrusive close buttons over the cat.
+ * Right-click opens desktop context menu; shortcuts 1-5 switch tools on the fly!
  */
 @Composable
 fun androidx.compose.ui.window.WindowScope.LiveDeskCatView(
     behavior: CatBehavior,
-    petCount: Int,
     thought: String,
-    activeTool: DesktopTool?,
+    petCount: Int,
     onPetCat: () -> Unit,
     onSelectTool: (DesktopTool) -> Unit,
+    onCyclePose: () -> Unit,
     onClose: () -> Unit
 ) {
-    var isHovered by remember { mutableStateOf(false) }
+    var showContextMenu by remember { mutableStateOf(false) }
+    var animFrame by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(behavior) {
+        while (true) {
+            delay(50)
+            animFrame = (animFrame + 0.12f) % (2f * Math.PI.toFloat())
+        }
+    }
+
+    // Subtle gentle breathing bounce
+    val breathOffset = if (behavior == CatBehavior.SLEEPING || behavior == CatBehavior.LOAFING) {
+        sin(animFrame) * 1.5f
+    } else {
+        sin(animFrame * 1.5f) * 2.0f
+    }
+
+    val isFacingRight = behavior != CatBehavior.WALKING_LEFT
+    val catBitmap = remember(isFacingRight) {
+        CatImageLoader.getCatImage(isFacingRight)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Bottom
     ) {
-        // 1. Thought Bubble (Dynamic Dialogue)
+        // 1. Thought Bubble (Dynamic Dialogue & Tips)
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = Color(0xF00F172A),
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xF20F172A),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x60F59E0B)),
-            shadowElevation = 8.dp,
-            modifier = Modifier.padding(bottom = 6.dp)
+            shadowElevation = 6.dp,
+            modifier = Modifier.padding(bottom = 4.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Text(
                     text = when (behavior) {
@@ -322,258 +393,191 @@ fun androidx.compose.ui.window.WindowScope.LiveDeskCatView(
                         else -> "💭 $thought"
                     },
                     color = Color(0xFFFEF3C7),
-                    fontSize = 10.5.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
         }
 
-        // 2. Animated Cutout Cat Body (Draggable + Click to Pet)
+        // 2. Pure Low-Poly Cat Model (No intrusive borders, no close icons overlapping ears)
+        // Click to pet, Drag to move anywhere, Right-click for quick menu
         WindowDraggableArea {
             Box(
                 modifier = Modifier
-                    .size(110.dp, 82.dp)
+                    .size(130.dp, 105.dp)
+                    .offset(y = breathOffset.dp)
                     .pointerInput(Unit) {
-                        detectTapGestures(onTap = { onPetCat() })
+                        detectTapGestures(
+                            onTap = { onPetCat() },
+                            onLongPress = { showContextMenu = true }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        // Right-click support
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                if (event.buttons.isSecondaryPressed) {
+                                    showContextMenu = true
+                                }
+                            }
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Procedural Illustrated Animated Cat
-                ProceduralCatCanvas(behavior = behavior)
-
-                // Close Button on hover
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(18.dp)
-                        .background(Color(0x99000000), CircleShape)
-                ) {
-                    Text("✕", color = Color.White, fontSize = 9.sp)
-                }
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-
-        // 3. Mini Floating Tool Switcher Bar
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xEE0F172A),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4038BDF8)),
-            shadowElevation = 6.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Pet / Cat Mode Indicator (Active when no tools are intercepting screen)
-                Surface(
-                    onClick = onPetCat,
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (activeTool == null) Color(0xFF10B981) else Color(0xFF334155),
-                    modifier = Modifier.height(24.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text("🐾", fontSize = 11.sp)
-                        Text(
-                            text = if (petCount > 0) "$petCount" else "Pet",
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                if (catBitmap != null) {
+                    Image(
+                        bitmap = catBitmap,
+                        contentDescription = "Poly Pizza Low-Poly Cat",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Fallback to geometric stylized low-poly cat canvas if image loading fails
+                    LowPolyCatGeometricCanvas(behavior = behavior, animFrame = animFrame)
                 }
 
-                // Punch Tool
-                MiniToolButton(
-                    emoji = "🥊",
-                    title = "Punch",
-                    isSelected = activeTool == DesktopTool.BOXING_GLOVE,
-                    activeColor = Color(0xFFEF4444),
-                    onClick = { onSelectTool(DesktopTool.BOXING_GLOVE) }
-                )
-
-                // Broom Tool
-                MiniToolButton(
-                    emoji = "🧹",
-                    title = "Broom",
-                    isSelected = activeTool == DesktopTool.SAPU_BROOM,
-                    activeColor = Color(0xFF10B981),
-                    onClick = { onSelectTool(DesktopTool.SAPU_BROOM) }
-                )
-
-                // Paint Tool
-                MiniToolButton(
-                    emoji = "🎨",
-                    title = "Paint",
-                    isSelected = activeTool == DesktopTool.PAINT_CANNON,
-                    activeColor = Color(0xFF8B5CF6),
-                    onClick = { onSelectTool(DesktopTool.PAINT_CANNON) }
-                )
-
-                // Water Gun Tool
-                MiniToolButton(
-                    emoji = "💧",
-                    title = "Water",
-                    isSelected = activeTool == DesktopTool.WATER_GUN,
-                    activeColor = Color(0xFF0EA5E9),
-                    onClick = { onSelectTool(DesktopTool.WATER_GUN) }
-                )
+                // Desktop Context Menu (Opens on Right-Click or Long Press)
+                DropdownMenu(
+                    expanded = showContextMenu,
+                    onDismissRequest = { showContextMenu = false },
+                    offset = DpOffset(0.dp, 10.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("🐾 Pet Cat (P)") },
+                        onClick = {
+                            onPetCat()
+                            showContextMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("🥊 Punch Screen (2)") },
+                        onClick = {
+                            onSelectTool(DesktopTool.BOXING_GLOVE)
+                            showContextMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("🧹 Broom & Clean (3)") },
+                        onClick = {
+                            onSelectTool(DesktopTool.SAPU_BROOM)
+                            showContextMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("🎨 Paint Cannon (4)") },
+                        onClick = {
+                            onSelectTool(DesktopTool.PAINT_CANNON)
+                            showContextMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("💧 Water Gun (5)") },
+                        onClick = {
+                            onSelectTool(DesktopTool.WATER_GUN)
+                            showContextMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("🔄 Change Cat Pose (C)") },
+                        onClick = {
+                            onCyclePose()
+                            showContextMenu = false
+                        }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("❌ Exit Companion (Q)", color = Color(0xFFEF4444)) },
+                        onClick = {
+                            onClose()
+                            showContextMenu = false
+                        }
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-fun MiniToolButton(
-    emoji: String,
-    title: String,
-    isSelected: Boolean,
-    activeColor: Color,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = if (isSelected) activeColor else Color.Transparent,
-        modifier = Modifier.size(24.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(emoji, fontSize = 12.sp)
         }
     }
 }
 
 /**
- * Procedural Vector Cat with animated tail, ears, and responsive facial expressions.
+ * Low-Poly Vector Fallback if PNG is ever missing.
  */
 @Composable
-fun ProceduralCatCanvas(behavior: CatBehavior) {
-    var animFrame by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(behavior) {
-        while (true) {
-            delay(50)
-            animFrame = (animFrame + 0.15f) % (2f * Math.PI.toFloat())
-        }
-    }
-
+fun LowPolyCatGeometricCanvas(behavior: CatBehavior, animFrame: Float) {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val catOrange = Color(0xFFF59E0B)
-        val catShadow = Color(0xFFD97706)
-        val catWhite = Color(0xFFFFFBEB)
+        val catOrange = Color(0xFFEA580C)
+        val catLightOrange = Color(0xFFF97316)
+        val catCream = Color(0xFFFEF3C7)
         val catPink = Color(0xFFF472B6)
 
-        val tailWag = sin(animFrame * 2f) * 12f
-        val breath = sin(animFrame) * 1.5f
-
-        // Tail
-        val tailPath = Path().apply {
-            moveTo(size.width * 0.22f, size.height * 0.72f)
-            quadraticTo(
-                size.width * 0.08f + tailWag,
-                size.height * 0.5f,
-                size.width * 0.14f + tailWag * 1.2f,
-                size.height * 0.35f
-            )
-        }
-        drawPath(
-            path = tailPath,
-            color = catShadow,
-            style = Stroke(width = 8f)
-        )
-
-        // Cat Body
-        drawRoundRect(
-            color = catOrange,
-            topLeft = Offset(size.width * 0.18f, size.height * 0.40f - breath),
-            size = Size(size.width * 0.62f, size.height * 0.46f + breath),
-            cornerRadius = CornerRadius(28f, 28f)
-        )
-
-        // White belly patch
-        drawRoundRect(
-            color = catWhite,
-            topLeft = Offset(size.width * 0.32f, size.height * 0.52f),
-            size = Size(size.width * 0.36f, size.height * 0.32f),
-            cornerRadius = CornerRadius(20f, 20f)
-        )
-
-        // Cat Head
-        val headY = size.height * 0.28f - breath * 0.5f
-        drawCircle(
-            color = catOrange,
-            radius = 28f,
-            center = Offset(size.width * 0.68f, headY)
-        )
-
-        // Ears
-        val leftEar = Path().apply {
-            moveTo(size.width * 0.60f, headY - 18f)
-            lineTo(size.width * 0.56f, headY - 38f)
-            lineTo(size.width * 0.66f, headY - 26f)
+        // Low-poly body facet
+        val bodyPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.25f, size.height * 0.75f)
+            lineTo(size.width * 0.45f, size.height * 0.40f)
+            lineTo(size.width * 0.75f, size.height * 0.45f)
+            lineTo(size.width * 0.85f, size.height * 0.80f)
+            lineTo(size.width * 0.55f, size.height * 0.85f)
             close()
         }
-        val rightEar = Path().apply {
-            moveTo(size.width * 0.72f, headY - 26f)
-            lineTo(size.width * 0.82f, headY - 38f)
-            lineTo(size.width * 0.78f, headY - 18f)
+        drawPath(bodyPath, catOrange)
+
+        // Low-poly belly highlight facet
+        val bellyPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.45f, size.height * 0.55f)
+            lineTo(size.width * 0.65f, size.height * 0.52f)
+            lineTo(size.width * 0.70f, size.height * 0.80f)
+            lineTo(size.width * 0.48f, size.height * 0.82f)
             close()
         }
-        drawPath(leftEar, catOrange)
-        drawPath(rightEar, catOrange)
-        drawPath(leftEar, catPink, style = Stroke(width = 2f))
-        drawPath(rightEar, catPink, style = Stroke(width = 2f))
+        drawPath(bellyPath, catCream)
 
-        // Eyes based on behavior
-        when (behavior) {
-            CatBehavior.SLEEPING -> {
-                // Sleeping closed curved eyes "- -"
-                drawLine(Color(0xFF78350F), Offset(size.width * 0.64f, headY - 4f), Offset(size.width * 0.68f, headY - 4f), 2.5f)
-                drawLine(Color(0xFF78350F), Offset(size.width * 0.74f, headY - 4f), Offset(size.width * 0.78f, headY - 4f), 2.5f)
-            }
-            CatBehavior.PETTED -> {
-                // Happy closed curved eyes "^ ^"
-                drawLine(Color(0xFFB45309), Offset(size.width * 0.64f, headY - 3f), Offset(size.width * 0.66f, headY - 7f), 2.5f)
-                drawLine(Color(0xFFB45309), Offset(size.width * 0.66f, headY - 7f), Offset(size.width * 0.68f, headY - 3f), 2.5f)
-                drawLine(Color(0xFFB45309), Offset(size.width * 0.74f, headY - 3f), Offset(size.width * 0.76f, headY - 7f), 2.5f)
-                drawLine(Color(0xFFB45309), Offset(size.width * 0.76f, headY - 7f), Offset(size.width * 0.78f, headY - 3f), 2.5f)
-            }
-            else -> {
-                // Big shiny eyes "• •"
-                drawCircle(Color(0xFF1E293B), radius = 4f, center = Offset(size.width * 0.66f, headY - 4f))
-                drawCircle(Color(0xFF1E293B), radius = 4f, center = Offset(size.width * 0.76f, headY - 4f))
-                // Glint
-                drawCircle(Color.White, radius = 1.5f, center = Offset(size.width * 0.65f, headY - 5f))
-                drawCircle(Color.White, radius = 1.5f, center = Offset(size.width * 0.75f, headY - 5f))
-            }
+        // Low-poly Head facet
+        val headPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.65f, size.height * 0.22f)
+            lineTo(size.width * 0.82f, size.height * 0.26f)
+            lineTo(size.width * 0.88f, size.height * 0.50f)
+            lineTo(size.width * 0.72f, size.height * 0.58f)
+            lineTo(size.width * 0.58f, size.height * 0.42f)
+            close()
         }
+        drawPath(headPath, catLightOrange)
 
-        // Cute Pink Nose & Mouth
-        drawCircle(catPink, radius = 2f, center = Offset(size.width * 0.71f, headY + 3f))
+        // Low-poly Ears
+        val ear1 = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.65f, size.height * 0.22f)
+            lineTo(size.width * 0.62f, size.height * 0.08f)
+            lineTo(size.width * 0.73f, size.height * 0.18f)
+            close()
+        }
+        val ear2 = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.78f, size.height * 0.20f)
+            lineTo(size.width * 0.88f, size.height * 0.08f)
+            lineTo(size.width * 0.84f, size.height * 0.26f)
+            close()
+        }
+        drawPath(ear1, catOrange)
+        drawPath(ear2, catOrange)
+        drawPath(ear1, catPink, style = Stroke(1.5f))
+        drawPath(ear2, catPink, style = Stroke(1.5f))
 
-        // Whiskers
-        drawLine(Color(0xFF78350F), Offset(size.width * 0.58f, headY + 1f), Offset(size.width * 0.50f, headY - 2f), 1.2f)
-        drawLine(Color(0xFF78350F), Offset(size.width * 0.58f, headY + 4f), Offset(size.width * 0.50f, headY + 5f), 1.2f)
-        drawLine(Color(0xFF78350F), Offset(size.width * 0.82f, headY + 1f), Offset(size.width * 0.90f, headY - 2f), 1.2f)
-        drawLine(Color(0xFF78350F), Offset(size.width * 0.82f, headY + 4f), Offset(size.width * 0.90f, headY + 5f), 1.2f)
+        // Eyes
+        drawCircle(Color(0xFF1E293B), radius = 3.5f, center = Offset(size.width * 0.70f, size.height * 0.36f))
+        drawCircle(Color(0xFF1E293B), radius = 3.5f, center = Offset(size.width * 0.81f, size.height * 0.38f))
 
-        // Paws
-        drawCircle(catWhite, radius = 8f, center = Offset(size.width * 0.36f, size.height * 0.84f))
-        drawCircle(catWhite, radius = 8f, center = Offset(size.width * 0.64f, size.height * 0.84f))
+        // Low-poly Tail
+        val tailWag = sin(animFrame * 2f) * 8f
+        val tailPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.25f, size.height * 0.70f)
+            lineTo(size.width * 0.12f + tailWag, size.height * 0.50f)
+            lineTo(size.width * 0.16f + tailWag, size.height * 0.36f)
+        }
+        drawPath(tailPath, catOrange, style = Stroke(7f))
     }
 }
 
 /**
  * Full-Screen Interaction Canvas.
- * Activated ONLY when user chooses Punch, Broom, Paint, or Water Gun.
- * Intercepts clicks to render realistic procedural cracks, splashes, and broom cleanup.
+ * Activated ONLY when user chooses Punch, Broom, Paint, or Water Gun via hotkeys (2, 3, 4, 5) or right-click menu.
+ * Press [1] or [Esc] to exit and return to normal unblocked screen!
  */
 @Composable
 fun FullScreenActionOverlay(
@@ -672,7 +676,6 @@ fun FullScreenActionOverlay(
                                 (dx * dx + dy * dy) < 22000f
                             }
                         }
-                        else -> {}
                     }
                 }
             }
@@ -797,7 +800,7 @@ fun FullScreenActionOverlay(
             }
         }
 
-        // Top Navigation Control Bar
+        // Sleek Minimal Top Bar for Active Tool Mode
         Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -808,17 +811,16 @@ fun FullScreenActionOverlay(
             shadowElevation = 8.dp
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = when (activeTool) {
-                        DesktopTool.BOXING_GLOVE -> "🥊 Screen Punch Active (Click anywhere to shatter)"
-                        DesktopTool.SAPU_BROOM -> "🧹 Broom Active (Drag to sweep & clean cracks)"
-                        DesktopTool.PAINT_CANNON -> "🎨 Paint Cannon Active (Click to spray acrylics)"
-                        DesktopTool.WATER_GUN -> "💧 Water Gun Active (Click to splash water)"
-                        else -> "Screen Tool Active"
+                        DesktopTool.BOXING_GLOVE -> "🥊 Punch Active (Click to shatter)"
+                        DesktopTool.SAPU_BROOM -> "🧹 Broom Active (Drag to clean)"
+                        DesktopTool.PAINT_CANNON -> "🎨 Paint Active (Click to spray)"
+                        DesktopTool.WATER_GUN -> "💧 Water Gun Active (Click to splash)"
                     },
                     color = Color(0xFFFDE68A),
                     fontSize = 12.sp,
@@ -832,7 +834,7 @@ fun FullScreenActionOverlay(
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Text("🐾 Back to Work (Esc)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("🐾 Back to Work [1 / Esc]", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
                 }
 
                 // Clean & Resume Work
@@ -842,69 +844,7 @@ fun FullScreenActionOverlay(
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text("🧹 Clean All", color = Color(0xFFE2E8F0), fontSize = 12.sp)
-                }
-            }
-        }
-
-        // Bottom Tool Dock
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
-                .background(Color(0xE60F172A), RoundedCornerShape(24.dp))
-                .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = onReturnToWork,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
-                ) {
-                    Text("🐾 [1] Cat Mode")
-                }
-
-                Button(
-                    onClick = { onSelectTool(DesktopTool.BOXING_GLOVE) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (activeTool == DesktopTool.BOXING_GLOVE) Color(0xFFEF4444) else Color(0xFF334155)
-                    )
-                ) {
-                    Text("🥊 [2] Punch (${when (punchLevel) { 1 -> "1x"; 2 -> "2x"; else -> "MAX" }})")
-                }
-
-                IconButton(onClick = onPunchLevelChange) {
-                    Text("⚡", fontSize = 16.sp)
-                }
-
-                Button(
-                    onClick = { onSelectTool(DesktopTool.SAPU_BROOM) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (activeTool == DesktopTool.SAPU_BROOM) Color(0xFF10B981) else Color(0xFF334155)
-                    )
-                ) {
-                    Text("🧹 [3] Broom")
-                }
-
-                Button(
-                    onClick = { onSelectTool(DesktopTool.PAINT_CANNON) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (activeTool == DesktopTool.PAINT_CANNON) Color(0xFF8B5CF6) else Color(0xFF334155)
-                    )
-                ) {
-                    Text("🎨 [4] Paint")
-                }
-
-                Button(
-                    onClick = { onSelectTool(DesktopTool.WATER_GUN) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (activeTool == DesktopTool.WATER_GUN) Color(0xFF0EA5E9) else Color(0xFF334155)
-                    )
-                ) {
-                    Text("💧 [5] Water")
+                    Text("🧹 Clean All", color = Color(0xFFE2E8F0), fontSize = 11.5.sp)
                 }
             }
         }

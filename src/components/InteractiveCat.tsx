@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CatBreed, CatState } from '../types';
 import { sound } from '../utils/audio';
 import { Heart, Sparkles, Move, Moon, Music } from 'lucide-react';
+import catLowPolyImg from '../assets/images/cat_lowpoly.png';
 
 interface InteractiveCatProps {
   laserPos: { x: number; y: number } | null;
@@ -282,93 +283,25 @@ export const InteractiveCat: React.FC<InteractiveCatProps> = ({
         </div>
       )}
 
-      {/* Interactive Cat Mascot Body */}
+      {/* Interactive Cat Mascot Body (Low-Poly 3D Cat from Poly Pizza 6dM1J6f6pm9) */}
       <div
-        className={`relative w-24 h-20 transition-transform duration-200 ${
+        className={`relative w-28 h-24 transition-transform duration-200 ${
           facing === 'left' ? 'scale-x-[-1]' : ''
-        } ${isPurring ? 'animate-purr-pulse' : ''}`}
+        } ${isPurring ? 'animate-purr-pulse scale-105' : ''}`}
       >
-        {/* Cat Ears */}
-        <div className={`absolute -top-3 left-3 w-5 h-6 bg-amber-500 rotate-[-20deg] rounded-tl-lg clip-triangle shadow-sm overflow-hidden flex items-center justify-center transition-transform ${isPurring ? 'rotate-[-25deg]' : ''}`}>
-          <div className="w-2.5 h-4 bg-rose-300 rounded-sm" />
-        </div>
-        <div className={`absolute -top-3 right-5 w-5 h-6 bg-amber-500 rotate-[20deg] rounded-tr-lg clip-triangle shadow-sm overflow-hidden flex items-center justify-center transition-transform ${isPurring ? 'rotate-[25deg]' : ''}`}>
-          <div className="w-2.5 h-4 bg-rose-300 rounded-sm" />
-        </div>
+        <img
+          src={catLowPolyImg}
+          alt="Low-Poly Cat"
+          className="w-full h-full object-contain filter drop-shadow-xl select-none pointer-events-none"
+        />
 
-        {/* Cat Body (Chubby Loaf) */}
-        <div
-          className={`w-24 h-16 rounded-3xl ${breedColors.body} shadow-xl border-2 ${breedColors.accent} relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
-            isPurring ? 'ring-4 ring-rose-400/50 shadow-rose-500/30' : ''
-          }`}
-        >
-          {/* Subtle Tabby Pattern Stripes */}
-          {selectedBreed === 'orange_tabby' && (
-            <>
-              <div className="absolute top-1 left-7 w-2 h-4 bg-amber-600/60 rounded-full" />
-              <div className="absolute top-1 left-11 w-2 h-5 bg-amber-600/60 rounded-full" />
-              <div className="absolute top-1 left-15 w-2 h-4 bg-amber-600/60 rounded-full" />
-            </>
-          )}
-
-          {/* Tuxedo White Chest */}
-          {selectedBreed === 'tuxedo' && (
-            <div className="absolute bottom-0 left-6 w-10 h-9 bg-slate-100 rounded-t-full" />
-          )}
-
-          {/* Blushing Cheeks when purring */}
-          {isPurring && (
-            <>
-              <div className="absolute top-6 right-8 w-3 h-2 bg-rose-400/80 rounded-full blur-[0.5px] animate-pulse" />
-              <div className="absolute top-6 right-2 w-3 h-2 bg-rose-400/80 rounded-full blur-[0.5px] animate-pulse" />
-            </>
-          )}
-
-          {/* Face Elements */}
-          <div className="absolute top-3 right-3 flex flex-col items-center">
-            {/* Eyes */}
-            <div className="flex items-center gap-3">
-              {isPurring ? (
-                // Happy curved purring eyes ^  ^
-                <>
-                  <span className="text-sm text-slate-800 font-extrabold leading-none -mt-1 select-none">^</span>
-                  <span className="text-sm text-slate-800 font-extrabold leading-none -mt-1 select-none">^</span>
-                </>
-              ) : state === 'sleep' ? (
-                <>
-                  <span className="text-xs text-slate-800 font-bold leading-none -mt-0.5">_</span>
-                  <span className="text-xs text-slate-800 font-bold leading-none -mt-0.5">_</span>
-                </>
-              ) : (
-                <>
-                  <div className={`w-2.5 h-3 ${breedColors.eyes} rounded-full border border-black/40 relative flex items-center justify-center`}>
-                    <div className="w-1 h-1.5 bg-black rounded-full" />
-                    <div className="absolute top-0.5 right-0.5 w-0.8 h-0.8 bg-white rounded-full" />
-                  </div>
-                  <div className={`w-2.5 h-3 ${breedColors.eyes} rounded-full border border-black/40 relative flex items-center justify-center`}>
-                    <div className="w-1 h-1.5 bg-black rounded-full" />
-                    <div className="absolute top-0.5 right-0.5 w-0.8 h-0.8 bg-white rounded-full" />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Nose & Mouth */}
-            <div className="w-1.5 h-1 bg-rose-400 rounded-full mt-1" />
-            <div className="text-[10px] leading-none text-slate-700 -mt-0.5 font-mono select-none">3</div>
+        {/* Sleep Indicator */}
+        {state === 'sleep' && !isPurring && (
+          <div className="absolute -top-3 right-2 flex items-center gap-1 text-sky-400 font-mono text-xs animate-float">
+            <Moon className="w-3.5 h-3.5" />
+            <span className="font-bold">zZz</span>
           </div>
-
-          {/* Paws */}
-          <div className="absolute -bottom-1 left-5 w-4 h-3 bg-amber-200 rounded-full border border-amber-600/30" />
-          <div className="absolute -bottom-1 left-11 w-4 h-3 bg-amber-200 rounded-full border border-amber-600/30" />
-
-          {/* Sleep Indicator */}
-          {state === 'sleep' && !isPurring && (
-            <div className="absolute -top-4 right-1 flex items-center gap-1 text-sky-400 font-mono text-xs animate-float">
-              <Moon className="w-3 h-3" />
-              <span>zZz</span>
-            </div>
-          )}
+        )}
 
           {/* Purring Indicator */}
           {isPurring && (
@@ -377,16 +310,6 @@ export const InteractiveCat: React.FC<InteractiveCatProps> = ({
               <span>purr~</span>
             </div>
           )}
-        </div>
-
-        {/* Tail (Wags happily when purring) */}
-        <div
-          className={`absolute bottom-1 -left-4 w-6 h-3 bg-amber-500 rounded-full origin-right transition-transform ${
-            isPurring
-              ? 'animate-bounce rotate-[-40deg]'
-              : 'rotate-[-25deg] animate-pulse'
-          }`}
-        />
       </div>
 
       {/* Floating Mini Action Bar on Hover */}
