@@ -5,11 +5,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,21 +19,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPlacement
-import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.delay
 import java.awt.Toolkit
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-// Data classes for full-screen effects
+// Data classes for visual effects
 data class ScreenCrack(
     val id: String,
     val x: Float,
@@ -77,63 +82,286 @@ enum class DesktopTool {
     BOXING_GLOVE, SAPU_BROOM, WATER_GUN, PAINT_CANNON, LASER
 }
 
+enum class WindowMode {
+    COMPACT_PET, // Small floating widget in the corner — other apps remain 100% clickable!
+    FULLSCREEN_STRESS_RELIEF // Full-screen overlay to punch, paint, and fidget
+}
+
 fun main() = application {
-    // 100% Full-Screen Transparent Overlay Window across primary display
     val screenSize = Toolkit.getDefaultToolkit().screenSize
-    val windowState = remember {
-        WindowState(
-            placement = WindowPlacement.Floating,
-            width = screenSize.width.dp,
-            height = screenSize.height.dp
-        )
+    val petWidth = 330.dp
+    val petHeight = 390.dp
+
+    var windowMode by remember { mutableStateOf(WindowMode.COMPACT_PET) }
+
+    // Start as a compact floating widget near bottom-right so the user can freely work
+    val initialX = ((screenSize.width - 360).coerceAtLeast(50)).dp
+    val initialY = ((screenSize.height - 460).coerceAtLeast(50)).dp
+
+    val windowState = rememberWindowState(
+        position = WindowPosition(initialX, initialY),
+        size = DpSize(petWidth, petHeight)
+    )
+
+    // Sync window size & position when toggling between Compact Desk Pet and Full-Screen Mode
+    LaunchedEffect(windowMode) {
+        if (windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
+            windowState.position = WindowPosition(0.dp, 0.dp)
+            windowState.size = DpSize(screenSize.width.dp, screenSize.height.dp)
+        } else {
+            windowState.position = WindowPosition(initialX, initialY)
+            windowState.size = DpSize(petWidth, petHeight)
+        }
     }
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "DeskToy Full-Screen Companion",
+        title = "DeskToy & Focus Buddy",
         state = windowState,
         alwaysOnTop = true,
         undecorated = true,
-        transparent = true
+        transparent = true,
+        onKeyEvent = { keyEvent ->
+            if (keyEvent.key == Key.Escape && windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
+                windowMode = WindowMode.COMPACT_PET
+                true
+            } else {
+                false
+            }
+        }
     ) {
-        DeskToyFullScreenOverlay()
+        if (windowMode == WindowMode.FULLSCREEN_STRESS_RELIEF) {
+            // Full-Screen Stress Relief Mode
+            FullScreenStressReliefOverlay(
+                onBackToWork = { windowMode = WindowMode.COMPACT_PET }
+            )
+        } else {
+            // Compact Floating Desk Companion Widget (Non-obstructive)
+            CompactDeskPetWidget(
+                onOpenStressRelief = { windowMode = WindowMode.FULLSCREEN_STRESS_RELIEF },
+                onClose = ::exitApplication
+            )
+        }
     }
 }
 
+/**
+ * Compact Floating Desk Pet Widget.
+ * Only occupies a small corner of the screen so all other desktop apps remain completely clickable!
+ */
 @Composable
-fun DeskToyFullScreenOverlay() {
+fun androidx.compose.ui.window.WindowScope.CompactDeskPetWidget(
+    onOpenStressRelief: () -> Unit,
+    onClose: () -> Unit
+) {
+    var catHappiness by remember { mutableStateOf(100) }
+    var petCount by remember { mutableStateOf(0) }
+    var catThought by remember { mutableStateOf("Ready to focus together! 🐾") }
+    var coachMessage by remember { mutableStateOf("Keep going! You're crushing it today 🚀") }
+
+    LaunchedEffect(Unit) {
+        val quotes = listOf(
+            "Take 3 deep breaths, pet the cat, then back to work!",
+            "Did that tab solve your problem yet? Stay in the zone!",
+            "Dopamine is cheap, shipping working software is priceless.",
+            "Punch the screen in Stress Mode if you hit a wall!",
+            "You are making steady progress! Keep focusing 🎯"
+        )
+        while (true) {
+            delay(35000)
+            coachMessage = quotes.random()
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xF20F172A),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x4038BDF8)),
+        shadowElevation = 12.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Draggable Window Title Header
+            WindowDraggableArea {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🐾", fontSize = 16.sp)
+                        Text(
+                            text = "Focus Buddy",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF10B981).copy(alpha = 0.25f)
+                        ) {
+                            Text(
+                                "WORK MODE",
+                                color = Color(0xFF34D399),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Text("✕", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // Cat Mascot & Dialogue
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Cat Speech Bubble
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1E293B),
+                    modifier = Modifier.padding(bottom = 6.dp)
+                ) {
+                    Text(
+                        text = catThought,
+                        color = Color(0xFFFDE68A),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+
+                // Interactive Cat Avatar (Click to Pet)
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFFF59E0B),
+                    modifier = Modifier
+                        .size(80.dp, 56.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                petCount++
+                                catHappiness = (catHappiness + 10).coerceAtMost(100)
+                                catThought = "Purrrrr! 💖 (Pets: $petCount)"
+                            }
+                        }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("🐱", fontSize = 32.sp)
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Click cat to pet ($petCount)",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 10.sp
+                )
+            }
+
+            // Focus Coach Reminder Card
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF1E293B).copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("👔", fontSize = 18.sp)
+                    Text(
+                        text = coachMessage,
+                        color = Color(0xFFE2E8F0),
+                        fontSize = 10.5.sp,
+                        lineHeight = 14.sp
+                    )
+                }
+            }
+
+            // Action Buttons
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Stress Relief Full-Screen Mode Button
+                Button(
+                    onClick = onOpenStressRelief,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("💥 Stress Relief (Punch Screen)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Quick Pet Action Button
+                    Button(
+                        onClick = {
+                            petCount++
+                            catHappiness = (catHappiness + 10).coerceAtMost(100)
+                            catThought = "Purrrrr! 🐾 Feeling great!"
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f).height(32.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("🐾 Pet Cat", fontSize = 10.5.sp, color = Color.White)
+                    }
+
+                    // Tip Label
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E293B),
+                        modifier = Modifier.weight(1f).height(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("Drag to move", fontSize = 10.sp, color = Color(0xFF64748B))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Full-Screen Stress Relief Overlay.
+ * Allows punching the monitor with procedural glass cracks, spraying paint, sweeping, and laser pointer.
+ * Includes prominent "Back to Work" controls and Esc key escape.
+ */
+@Composable
+fun FullScreenStressReliefOverlay(
+    onBackToWork: () -> Unit
+) {
     var activeTool by remember { mutableStateOf(DesktopTool.BOXING_GLOVE) }
     var punchLevel by remember { mutableStateOf(2) }
     val cracks = remember { mutableStateListOf<ScreenCrack>() }
     val splatters = remember { mutableStateListOf<PaintSplatter>() }
     var mousePos by remember { mutableStateOf(Offset(200f, 200f)) }
     var laserPos by remember { mutableStateOf<Offset?>(null) }
-    var isPunchingAnim by remember { mutableStateOf(false) }
-
-    // Cat roaming state
-    var catPos by remember { mutableStateOf(Offset(250f, 600f)) }
-    var catHappiness by remember { mutableStateOf(100) }
-    var catThought by remember { mutableStateOf("Meow! Don't switch to YouTube! 🐾") }
-
-    // Floating Coach Drone state
-    var coachMessage by remember { mutableStateOf("Hey! Stop getting distracted and finish that code! 🎯") }
-    var showCoachBubble by remember { mutableStateOf(true) }
-
-    // Periodic reminder check-ins
-    LaunchedEffect(Unit) {
-        val quotes = listOf(
-            "Oi! Did that YouTube video solve your bug yet?",
-            "Punch the monitor with the boxing glove if stressed!",
-            "Take 3 deep breaths, pet the cat, then back to work!",
-            "Dopamine is cheap, shipping production code is priceless.",
-            "I saw you open Reddit. Don't test me!"
-        )
-        while (true) {
-            delay(30000)
-            coachMessage = quotes.random()
-            showCoachBubble = true
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -144,8 +372,6 @@ fun DeskToyFullScreenOverlay() {
                     mousePos = tapPos
                     when (activeTool) {
                         DesktopTool.BOXING_GLOVE -> {
-                            isPunchingAnim = true
-                            // Generate procedural shatter fracture across screen
                             val numRays = 8 + punchLevel * 4
                             val maxRadius = 70f + punchLevel * 50f
                             val rays = (0 until numRays).map { i ->
@@ -211,10 +437,6 @@ fun DeskToyFullScreenOverlay() {
                         }
                         DesktopTool.LASER -> {
                             laserPos = tapPos
-                            // Cat follows laser
-                            val targetX = (catPos.x + (tapPos.x - catPos.x) * 0.3f).coerceIn(40f, 1600f)
-                            val targetY = (catPos.y + (tapPos.y - catPos.y) * 0.3f).coerceIn(40f, 900f)
-                            catPos = Offset(targetX, targetY)
                         }
                         else -> {}
                     }
@@ -237,16 +459,12 @@ fun DeskToyFullScreenOverlay() {
                         }
                     } else if (activeTool == DesktopTool.LASER) {
                         laserPos = dragPos
-                        val targetX = (catPos.x + (dragPos.x - catPos.x) * 0.15f).coerceIn(40f, 1600f)
-                        val targetY = (catPos.y + (dragPos.y - catPos.y) * 0.15f).coerceIn(40f, 900f)
-                        catPos = Offset(targetX, targetY)
                     }
                 }
             }
     ) {
-        // 1. Full-Screen Canvas (Procedural Cracks, Glass Shards, Splatters)
+        // Procedural Crack & Paint Canvas
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Render Cracks
             for (crack in cracks) {
                 drawCircle(
                     color = Color.White.copy(alpha = 0.9f),
@@ -305,7 +523,6 @@ fun DeskToyFullScreenOverlay() {
                 }
             }
 
-            // Render Splatters
             for (splatter in splatters) {
                 drawCircle(
                     color = splatter.color,
@@ -322,7 +539,6 @@ fun DeskToyFullScreenOverlay() {
                 }
             }
 
-            // Laser Dot
             laserPos?.let { pos ->
                 drawCircle(color = Color.Red.copy(alpha = 0.3f), radius = 20f, center = pos)
                 drawCircle(color = Color.Red, radius = 6f, center = pos)
@@ -330,105 +546,63 @@ fun DeskToyFullScreenOverlay() {
             }
         }
 
-        // 2. Floating Cat Sitting / Roaming anywhere on screen with Pet function
-        Box(
+        // Top Status & "Back to Work" Navigation Bar
+        Surface(
             modifier = Modifier
-                .offset(x = catPos.x.dp, y = catPos.y.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        catHappiness = (catHappiness + 15).coerceAtMost(100)
-                        catThought = "Purrrrrr! 💖 That feels amazing! +10 Focus Power!"
-                    }
-                }
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xF20F172A),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33EF4444)),
+            shadowElevation = 8.dp
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF0F172A).copy(alpha = 0.95f),
-                    modifier = Modifier.padding(bottom = 4.dp)
-                ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("💥", fontSize = 16.sp)
                     Text(
-                        text = catThought,
-                        color = Color(0xFFFDE68A),
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = "Stress Relief Active (Click anywhere to punch / paint)",
+                        color = Color(0xFFFCA5A5),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
                     )
                 }
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFFF59E0B),
-                    modifier = Modifier.size(64.dp, 44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("🐱", fontSize = 26.sp)
-                    }
-                }
-                Text("Click to pet 🐾", color = Color(0xFFE2E8F0), fontSize = 9.sp)
-            }
-        }
 
-        // 3. Floating Coach Drone (Telling you to come back to work)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 40.dp, end = 40.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.End) {
-                AnimatedVisibility(
-                    visible = showCoachBubble,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                Button(
+                    onClick = onBackToWork,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A).copy(alpha = 0.95f)),
-                        modifier = Modifier.widthIn(max = 280.dp).padding(bottom = 8.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "🚨 Focus Coach Alert",
-                                color = Color(0xFFFBBF24),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = coachMessage,
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Button(
-                                onClick = { showCoachBubble = false },
-                                modifier = Modifier.align(Alignment.End),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
-                            ) {
-                                Text("I'm Working!", fontSize = 12.sp)
-                            }
-                        }
-                    }
+                    Text("💻 Back to Work (Esc)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF4F46E5),
-                    modifier = Modifier
-                        .size(54.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures { showCoachBubble = !showCoachBubble }
-                        }
+
+                Button(
+                    onClick = {
+                        cracks.clear()
+                        splatters.clear()
+                        laserPos = null
+                        onBackToWork()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("👔", fontSize = 26.sp)
-                    }
+                    Text("🧹 Clean & Resume", color = Color(0xFFE2E8F0), fontSize = 12.sp)
                 }
             }
         }
 
-        // 4. Floating Minimal Bottom Dock for Tools
+        // Bottom Tool Dock
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 24.dp)
                 .background(Color(0xE60F172A), RoundedCornerShape(24.dp))
+                .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(24.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Row(
@@ -485,7 +659,7 @@ fun DeskToyFullScreenOverlay() {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569))
                 ) {
-                    Text("✨ Clean All")
+                    Text("✨ Clear Effects")
                 }
             }
         }

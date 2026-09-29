@@ -2,13 +2,15 @@
 
 A transparent, always-on-top desktop overlay fidget and focus accountability companion built with **Kotlin Multiplatform** and **Compose Multiplatform for Desktop**.
 
-## 🚀 Key Desktop Features
-- **Transparent Desktop Overlay**: Runs on top of all native windows (VS Code, Chrome, YouTube, Games, Discord).
-- **Procedural Screen Puncher & Shatter**: Click anywhere to shatter your monitor with ray-tracing glass fractures.
-- **Sapu (Broom) & Mop Wiper**: Clean up cracks, water droplets, and paint splatters.
-- **Paint & Water Gun**: Acrylic splatter with physics drips.
-- **Loafing Desk Cat**: Click to pet with soothing purr rumble, heart feedback, and laser chase.
-- **Focus Coach Object**: Periodically checks in when you get distracted and prompts you to return to work.
+## 🚀 Key Desktop Features & Modes
+- **Dual Display Modes (Work vs Break)**:
+  - 🟢 **Work Mode (Compact Desk Pet)**: Runs as a compact, draggable floating widget (`330x390dp`) in the bottom-right corner of your screen. **Your entire screen, IDE, browser, and terminal remain 100% clickable and unblocked!**
+  - 💥 **Stress Relief Mode (Full-Screen Break)**: Need to vent stress? Click *"💥 Stress Relief"* to expand full-screen. Punch the screen, spray paint, or sweep with the broom. Press `Esc` or click *"💻 Back to Work"* at any time to return to your work!
+- **Interactive Desk Cat**: Roams and sits by your side, displays focus thoughts, and has a dedicated "🐾 Pet Cat" action with live pet counter.
+- **Focus Coach Drone**: Periodic non-judgmental reminders to stay off YouTube and keep shipping code.
+- **Procedural Screen Puncher & Shatter**: Shatter your screen with realistic procedural glass fractures.
+- **Sapu (Broom) Wiper**: Clean up cracks and paint splatters.
+- **Paint Cannon & Laser Pointer**: Interactive splatter physics and laser dot for the cat to chase.
 
 ## 🛠️ How to Build and Run
 
