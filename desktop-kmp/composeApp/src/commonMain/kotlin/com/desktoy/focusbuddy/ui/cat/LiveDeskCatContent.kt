@@ -131,18 +131,12 @@ fun LiveDeskCatContent(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (catBitmap != null) {
-                Image(
-                    bitmap = catBitmap,
-                    contentDescription = "Poly Pizza Low-Poly Cat",
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                LowPolyCatGeometricCanvas(
-                    behavior = state.catBehavior,
-                    animFrame = animFrame
-                )
-            }
+            // Real-Time 3D Faceted Geometry Model (Poly Pizza 6dM1J6f6pm9)
+            LowPoly3DCatMesh(
+                behavior = state.catBehavior,
+                isFacingRight = isFacingRight,
+                modifier = Modifier.fillMaxSize()
+            )
 
             // Desktop Context Menu (Opens on Right-Click or Long Press)
             DropdownMenu(

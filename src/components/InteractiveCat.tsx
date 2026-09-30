@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CatBreed, CatState } from '../types';
 import { sound } from '../utils/audio';
 import { Heart, Sparkles, Move, Moon, Music } from 'lucide-react';
-import catLowPolyImg from '../assets/images/cat_lowpoly.png';
+import { Cat3DCanvas } from './Cat3DCanvas';
 
 interface InteractiveCatProps {
   laserPos: { x: number; y: number } | null;
@@ -283,33 +283,33 @@ export const InteractiveCat: React.FC<InteractiveCatProps> = ({
         </div>
       )}
 
-      {/* Interactive Cat Mascot Body (Low-Poly 3D Cat from Poly Pizza 6dM1J6f6pm9) */}
-      <div
-        className={`relative w-28 h-24 transition-transform duration-200 ${
-          facing === 'left' ? 'scale-x-[-1]' : ''
-        } ${isPurring ? 'animate-purr-pulse scale-105' : ''}`}
-      >
-        <img
-          src={catLowPolyImg}
-          alt="Low-Poly Cat"
-          className="w-full h-full object-contain filter drop-shadow-xl select-none pointer-events-none"
+      {/* Interactive 3D Cat Model (Live GLB from Poly Pizza 6dM1J6f6pm9) */}
+      <div className="relative w-36 h-32 flex items-center justify-center">
+        <Cat3DCanvas
+          state={state}
+          facing={facing}
+          isPurring={isPurring}
+          selectedBreed={selectedBreed}
+          onPet={pet}
+          width={150}
+          height={130}
         />
 
         {/* Sleep Indicator */}
         {state === 'sleep' && !isPurring && (
-          <div className="absolute -top-3 right-2 flex items-center gap-1 text-sky-400 font-mono text-xs animate-float">
+          <div className="absolute top-0 right-3 flex items-center gap-1 text-sky-400 font-mono text-xs animate-float pointer-events-none">
             <Moon className="w-3.5 h-3.5" />
             <span className="font-bold">zZz</span>
           </div>
         )}
 
-          {/* Purring Indicator */}
-          {isPurring && (
-            <div className="absolute -top-5 right-0 flex items-center gap-0.5 text-rose-400 font-bold text-[10px] bg-slate-900/90 px-1.5 py-0.5 rounded-full border border-rose-400/40">
-              <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500 animate-pulse" />
-              <span>purr~</span>
-            </div>
-          )}
+        {/* Purring Indicator */}
+        {isPurring && (
+          <div className="absolute top-0 right-2 flex items-center gap-0.5 text-rose-400 font-bold text-[10px] bg-slate-900/90 px-1.5 py-0.5 rounded-full border border-rose-400/40 pointer-events-none">
+            <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500 animate-pulse" />
+            <span>purr~</span>
+          </div>
+        )}
       </div>
 
       {/* Floating Mini Action Bar on Hover */}
