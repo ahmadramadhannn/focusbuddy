@@ -1,10 +1,13 @@
-package com.desktoy.focusbuddy
+package com.desktoy.focusbuddy.util
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
 import java.io.File
 
+/**
+ * Image loader utility with caching and multi-path resolution fallbacks for low-poly cat assets.
+ */
 object CatImageLoader {
     private var cachedRight: ImageBitmap? = null
     private var cachedLeft: ImageBitmap? = null
