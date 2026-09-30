@@ -131,8 +131,8 @@ fun LiveDeskCatContent(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Real-Time 3D Faceted Geometry Model (Poly Pizza 6dM1J6f6pm9)
-            LowPoly3DCatMesh(
+            // 3D GLB Model Mesh Renderer (Poly Pizza cat.glb 6dM1J6f6pm9)
+            GlbCat3DCanvas(
                 behavior = state.catBehavior,
                 isFacingRight = isFacingRight,
                 modifier = Modifier.fillMaxSize()

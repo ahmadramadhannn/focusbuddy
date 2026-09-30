@@ -20,6 +20,12 @@ kotlin {
                 implementation(compose.components.uiToolingPreview)
                 // Coroutines
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+                // Serialization for 3D glTF/GLB binary parsing & scene graph
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+                // 3D and Math utilities for Compose Multiplatform
+                implementation("com.soywiz.korlibs.korge2:korge-3d:4.0.10") {
+                    isTransitive = false
+                }
             }
         }
         
